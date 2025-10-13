@@ -1,0 +1,1351 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Moramor API Tester - تست API مورامور</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            padding: 20px;
+            min-height: 100vh;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            overflow: hidden;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+
+        .header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+        }
+
+        .header p {
+            opacity: 0.9;
+            font-size: 1.1em;
+        }
+
+        .auth-section {
+            background: #f8f9fa;
+            padding: 20px;
+            border-bottom: 2px solid #dee2e6;
+        }
+
+        .auth-container {
+            display: flex;
+            gap: 20px;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+
+        .auth-status {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 10px 20px;
+            background: white;
+            border-radius: 10px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+
+        .status-indicator {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background: #dc3545;
+        }
+
+        .status-indicator.logged-in {
+            background: #28a745;
+        }
+
+        .token-display {
+            flex: 1;
+            padding: 10px 15px;
+            background: white;
+            border: 1px solid #dee2e6;
+            border-radius: 8px;
+            font-family: monospace;
+            font-size: 0.85em;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .main-content {
+            display: grid;
+            grid-template-columns: 300px 1fr;
+            min-height: 600px;
+        }
+
+        .sidebar {
+            background: #2c3e50;
+            color: white;
+            padding: 20px;
+            overflow-y: auto;
+        }
+
+        .endpoint-group {
+            margin-bottom: 25px;
+        }
+
+        .endpoint-group h3 {
+            color: #3498db;
+            margin-bottom: 15px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid #34495e;
+            font-size: 1.1em;
+        }
+
+        .endpoint-btn {
+            width: 100%;
+            text-align: right;
+            padding: 12px 15px;
+            margin-bottom: 8px;
+            background: #34495e;
+            border: none;
+            border-radius: 8px;
+            color: white;
+            cursor: pointer;
+            transition: all 0.3s;
+            font-size: 0.9em;
+        }
+
+        .endpoint-btn:hover {
+            background: #3498db;
+            transform: translateX(-5px);
+        }
+
+        .endpoint-btn.active {
+            background: #3498db;
+            box-shadow: 0 4px 10px rgba(52, 152, 219, 0.4);
+        }
+
+        .method-badge {
+            display: inline-block;
+            padding: 3px 8px;
+            border-radius: 4px;
+            font-size: 0.75em;
+            font-weight: bold;
+            margin-left: 8px;
+        }
+
+        .method-get { background: #28a745; }
+        .method-post { background: #007bff; }
+        .method-patch { background: #ffc107; color: #000; }
+        .method-delete { background: #dc3545; }
+
+        .content-area {
+            padding: 30px;
+            overflow-y: auto;
+        }
+
+        .endpoint-details {
+            display: none;
+        }
+
+        .endpoint-details.active {
+            display: block;
+            animation: fadeIn 0.3s;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .detail-header {
+            margin-bottom: 25px;
+            padding-bottom: 15px;
+            border-bottom: 3px solid #667eea;
+        }
+
+        .detail-header h2 {
+            color: #2c3e50;
+            margin-bottom: 8px;
+        }
+
+        .detail-header .endpoint-path {
+            font-family: monospace;
+            background: #f8f9fa;
+            padding: 10px 15px;
+            border-radius: 8px;
+            color: #495057;
+            font-size: 1.1em;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            color: #495057;
+            font-weight: 600;
+        }
+
+        .form-group input,
+        .form-group textarea,
+        .form-group select {
+            width: 100%;
+            padding: 12px 15px;
+            border: 2px solid #dee2e6;
+            border-radius: 8px;
+            font-size: 0.95em;
+            transition: border-color 0.3s;
+        }
+
+        .form-group input:focus,
+        .form-group textarea:focus,
+        .form-group select:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .form-group textarea {
+            min-height: 120px;
+            font-family: monospace;
+        }
+
+        .form-row {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+        }
+
+        .btn {
+            padding: 12px 30px;
+            border: none;
+            border-radius: 8px;
+            font-size: 1em;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            margin-left: 10px;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+        }
+
+        .btn-secondary {
+            background: #6c757d;
+            color: white;
+        }
+
+        .btn-danger {
+            background: #dc3545;
+            color: white;
+        }
+
+        .response-section {
+            margin-top: 30px;
+            padding: 20px;
+            background: #f8f9fa;
+            border-radius: 10px;
+        }
+
+        .response-section h3 {
+            margin-bottom: 15px;
+            color: #495057;
+        }
+
+        .response-box {
+            background: #1e1e1e;
+            color: #d4d4d4;
+            padding: 20px;
+            border-radius: 8px;
+            max-height: 400px;
+            overflow: auto;
+            font-family: 'Courier New', monospace;
+            font-size: 0.9em;
+            line-height: 1.5;
+        }
+
+        .status-success {
+            color: #28a745;
+            font-weight: bold;
+        }
+
+        .status-error {
+            color: #dc3545;
+            font-weight: bold;
+        }
+
+        .loading {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid rgba(255,255,255,.3);
+            border-radius: 50%;
+            border-top-color: white;
+            animation: spin 1s ease-in-out infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .info-box {
+            background: #e7f3ff;
+            border-right: 4px solid #2196F3;
+            padding: 15px;
+            margin-bottom: 20px;
+            border-radius: 5px;
+        }
+
+        .warning-box {
+            background: #fff3cd;
+            border-right: 4px solid #ffc107;
+            padding: 15px;
+            margin-bottom: 20px;
+            border-radius: 5px;
+        }
+
+        .quick-actions {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+
+        pre {
+            margin: 0;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🛍️ Moramor API Tester</h1>
+            <p>محیط تست کامل API فروشگاه مورامور</p>
+        </div>
+
+        <div class="auth-section">
+            <div class="auth-container">
+                <div class="auth-status">
+                    <span class="status-indicator" id="authIndicator"></span>
+                    <span id="authStatusText">وارد نشده</span>
+                </div>
+                <input type="text" class="token-display" id="tokenDisplay" placeholder="توکن احراز هویت" readonly>
+                <button class="btn btn-secondary" onclick="clearAuth()">خروج</button>
+            </div>
+        </div>
+
+        <div class="main-content">
+            <div class="sidebar">
+                <div class="endpoint-group">
+                    <h3>🔐 احراز هویت</h3>
+                    <button class="endpoint-btn" onclick="showEndpoint('register')">
+                        ثبت‌نام
+                        <span class="method-badge method-post">POST</span>
+                    </button>
+                    <button class="endpoint-btn" onclick="showEndpoint('login')">
+                        ورود
+                        <span class="method-badge method-post">POST</span>
+                    </button>
+                    <button class="endpoint-btn" onclick="showEndpoint('refresh')">
+                        Refresh Token
+                        <span class="method-badge method-post">POST</span>
+                    </button>
+                    <button class="endpoint-btn" onclick="showEndpoint('me')">
+                        اطلاعات کاربر
+                        <span class="method-badge method-get">GET</span>
+                    </button>
+                </div>
+
+                <div class="endpoint-group">
+                    <h3>📦 محصولات</h3>
+                    <button class="endpoint-btn" onclick="showEndpoint('products-list')">
+                        لیست محصولات
+                        <span class="method-badge method-get">GET</span>
+                    </button>
+                    <button class="endpoint-btn" onclick="showEndpoint('product-create')">
+                        ایجاد محصول
+                        <span class="method-badge method-post">POST</span>
+                    </button>
+                    <button class="endpoint-btn" onclick="showEndpoint('product-detail')">
+                        جزئیات محصول
+                        <span class="method-badge method-get">GET</span>
+                    </button>
+                    <button class="endpoint-btn" onclick="showEndpoint('product-update')">
+                        ویرایش محصول
+                        <span class="method-badge method-patch">PATCH</span>
+                    </button>
+                    <button class="endpoint-btn" onclick="showEndpoint('product-delete')">
+                        حذف محصول
+                        <span class="method-badge method-delete">DELETE</span>
+                    </button>
+                </div>
+
+                <div class="endpoint-group">
+                    <h3>📂 دسته‌بندی‌ها</h3>
+                    <button class="endpoint-btn" onclick="showEndpoint('categories-list')">
+                        لیست دسته‌بندی‌ها
+                        <span class="method-badge method-get">GET</span>
+                    </button>
+                    <button class="endpoint-btn" onclick="showEndpoint('category-create')">
+                        ایجاد دسته‌بندی
+                        <span class="method-badge method-post">POST</span>
+                    </button>
+                </div>
+
+                <div class="endpoint-group">
+                    <h3>🛒 سبد خرید</h3>
+                    <button class="endpoint-btn" onclick="showEndpoint('cart-get')">
+                        مشاهده سبد
+                        <span class="method-badge method-get">GET</span>
+                    </button>
+                    <button class="endpoint-btn" onclick="showEndpoint('cart-add')">
+                        افزودن به سبد
+                        <span class="method-badge method-post">POST</span>
+                    </button>
+                    <button class="endpoint-btn" onclick="showEndpoint('cart-clear')">
+                        خالی کردن سبد
+                        <span class="method-badge method-delete">DELETE</span>
+                    </button>
+                </div>
+
+                <div class="endpoint-group">
+                    <h3>📋 سفارشات</h3>
+                    <button class="endpoint-btn" onclick="showEndpoint('orders-list')">
+                        لیست سفارشات
+                        <span class="method-badge method-get">GET</span>
+                    </button>
+                    <button class="endpoint-btn" onclick="showEndpoint('order-detail')">
+                        جزئیات سفارش
+                        <span class="method-badge method-get">GET</span>
+                    </button>
+                </div>
+
+                <div class="endpoint-group">
+                    <h3>💳 پرداخت</h3>
+                    <button class="endpoint-btn" onclick="showEndpoint('checkout')">
+                        پرداخت سفارش
+                        <span class="method-badge method-post">POST</span>
+                    </button>
+                </div>
+
+                <div class="endpoint-group">
+                    <h3>📍 آدرس‌ها</h3>
+                    <button class="endpoint-btn" onclick="showEndpoint('addresses-list')">
+                        لیست آدرس‌ها
+                        <span class="method-badge method-get">GET</span>
+                    </button>
+                    <button class="endpoint-btn" onclick="showEndpoint('address-create')">
+                        ایجاد آدرس
+                        <span class="method-badge method-post">POST</span>
+                    </button>
+                </div>
+
+                <div class="endpoint-group">
+                    <h3>⭐ علاقه‌مندی‌ها</h3>
+                    <button class="endpoint-btn" onclick="showEndpoint('wishlist-get')">
+                        لیست علاقه‌مندی‌ها
+                        <span class="method-badge method-get">GET</span>
+                    </button>
+                    <button class="endpoint-btn" onclick="showEndpoint('wishlist-add')">
+                        افزودن به علاقه‌مندی‌ها
+                        <span class="method-badge method-post">POST</span>
+                    </button>
+                </div>
+
+                <div class="endpoint-group">
+                    <h3>⚕️ سلامت سیستم</h3>
+                    <button class="endpoint-btn" onclick="showEndpoint('health')">
+                        وضعیت سرور
+                        <span class="method-badge method-get">GET</span>
+                    </button>
+                </div>
+            </div>
+
+            <div class="content-area">
+                <!-- Register Endpoint -->
+                <div id="register" class="endpoint-details">
+                    <div class="detail-header">
+                        <h2>ثبت‌نام کاربر جدید</h2>
+                        <div class="endpoint-path">POST /api/v1/auth/register</div>
+                    </div>
+                    <form onsubmit="callAPI(event, 'register')">
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label>نام کامل *</label>
+                                <input type="text" name="name" required placeholder="علی احمدی">
+                            </div>
+                            <div class="form-group">
+                                <label>ایمیل *</label>
+                                <input type="email" name="email" required placeholder="user@example.com">
+                            </div>
+                        </div>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label>رمز عبور *</label>
+                                <input type="password" name="password" required placeholder="حداقل 8 کاراکتر">
+                            </div>
+                            <div class="form-group">
+                                <label>شماره تماس</label>
+                                <input type="tel" name="phone" placeholder="09123456789">
+                            </div>
+                        </div>
+                        <button type="submit" class="btn btn-primary">ثبت‌نام</button>
+                    </form>
+                    <div class="response-section" id="register-response" style="display:none;">
+                        <h3>پاسخ سرور</h3>
+                        <div class="response-box" id="register-response-content"></div>
+                    </div>
+                </div>
+
+                <!-- Login Endpoint -->
+                <div id="login" class="endpoint-details">
+                    <div class="detail-header">
+                        <h2>ورود به سیستم</h2>
+                        <div class="endpoint-path">POST /api/v1/auth/login</div>
+                    </div>
+                    <div class="info-box">
+                        <strong>کاربر پیش‌فرض:</strong><br>
+                        ایمیل: admin@moramor.com<br>
+                        رمز عبور: Admin@123456
+                    </div>
+                    <div class="quick-actions">
+                        <button class="btn btn-secondary" onclick="loginAsAdmin()">ورود با ادمین</button>
+                    </div>
+                    <form onsubmit="callAPI(event, 'login')">
+                        <div class="form-group">
+                            <label>ایمیل *</label>
+                            <input type="email" name="email" id="login-email" required placeholder="admin@moramor.com">
+                        </div>
+                        <div class="form-group">
+                            <label>رمز عبور *</label>
+                            <input type="password" name="password" id="login-password" required placeholder="Admin@123456">
+                        </div>
+                        <button type="submit" class="btn btn-primary">ورود</button>
+                    </form>
+                    <div class="response-section" id="login-response" style="display:none;">
+                        <h3>پاسخ سرور</h3>
+                        <div class="response-box" id="login-response-content"></div>
+                    </div>
+                </div>
+
+                <!-- Refresh Token -->
+                <div id="refresh" class="endpoint-details">
+                    <div class="detail-header">
+                        <h2>تمدید توکن</h2>
+                        <div class="endpoint-path">POST /api/v1/auth/refresh</div>
+                    </div>
+                    <form onsubmit="callAPI(event, 'refresh')">
+                        <div class="form-group">
+                            <label>Refresh Token *</label>
+                            <input type="text" name="refreshToken" id="refreshToken" required placeholder="Refresh token...">
+                        </div>
+                        <button type="submit" class="btn btn-primary">تمدید توکن</button>
+                    </form>
+                    <div class="response-section" id="refresh-response" style="display:none;">
+                        <h3>پاسخ سرور</h3>
+                        <div class="response-box" id="refresh-response-content"></div>
+                    </div>
+                </div>
+
+                <!-- Me Endpoint -->
+                <div id="me" class="endpoint-details">
+                    <div class="detail-header">
+                        <h2>اطلاعات کاربر فعلی</h2>
+                        <div class="endpoint-path">GET /api/v1/auth/me</div>
+                    </div>
+                    <div class="warning-box">
+                        🔐 نیازمند احراز هویت: ابتدا وارد شوید
+                    </div>
+                    <button onclick="callAPI(event, 'me')" class="btn btn-primary">دریافت اطلاعات</button>
+                    <div class="response-section" id="me-response" style="display:none;">
+                        <h3>پاسخ سرور</h3>
+                        <div class="response-box" id="me-response-content"></div>
+                    </div>
+                </div>
+
+                <!-- Products List -->
+                <div id="products-list" class="endpoint-details">
+                    <div class="detail-header">
+                        <h2>لیست محصولات</h2>
+                        <div class="endpoint-path">GET /api/v1/products</div>
+                    </div>
+                    <form onsubmit="callAPI(event, 'products-list')">
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label>صفحه</label>
+                                <input type="number" name="page" value="1" min="1">
+                            </div>
+                            <div class="form-group">
+                                <label>تعداد در صفحه</label>
+                                <input type="number" name="limit" value="10" min="1" max="100">
+                            </div>
+                            <div class="form-group">
+                                <label>جستجو</label>
+                                <input type="text" name="search" placeholder="نام محصول...">
+                            </div>
+                        </div>
+                        <button type="submit" class="btn btn-primary">دریافت لیست</button>
+                    </form>
+                    <div class="response-section" id="products-list-response" style="display:none;">
+                        <h3>پاسخ سرور</h3>
+                        <div class="response-box" id="products-list-response-content"></div>
+                    </div>
+                </div>
+
+                <!-- Create Product -->
+                <div id="product-create" class="endpoint-details">
+                    <div class="detail-header">
+                        <h2>ایجاد محصول جدید</h2>
+                        <div class="endpoint-path">POST /api/v1/products</div>
+                    </div>
+                    <div class="warning-box">
+                        🔐 نیازمند نقش ادمین
+                    </div>
+                    <form onsubmit="callAPI(event, 'product-create')">
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label>نام محصول *</label>
+                                <input type="text" name="name" required placeholder="گردنبند چشم ببر">
+                            </div>
+                            <div class="form-group">
+                                <label>Slug *</label>
+                                <input type="text" name="slug" required placeholder="tigers-eye-necklace">
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label>توضیحات</label>
+                            <textarea name="description" placeholder="توضیحات کامل محصول..."></textarea>
+                        </div>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label>قیمت (ریال) *</label>
+                                <input type="number" name="price" required placeholder="2500000">
+                            </div>
+                            <div class="form-group">
+                                <label>تخفیف (%)</label>
+                                <input type="number" name="discount" value="0" min="0" max="100">
+                            </div>
+                            <div class="form-group">
+                                <label>موجودی *</label>
+                                <input type="number" name="stock" required value="10" min="0">
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label>Category ID *</label>
+                            <input type="text" name="categoryId" required placeholder="از لیست دسته‌بندی‌ها کپی کنید">
+                        </div>
+                        <div class="form-group">
+                            <label>مواد (JSON Array)</label>
+                            <input type="text" name="materials" value='["نقره","چشم ببر"]' placeholder='["نقره","طلا"]'>
+                        </div>
+                        <div class="form-group">
+                            <label>تصاویر (JSON Array)</label>
+                            <input type="text" name="images" value='["/products/sample.jpg"]' placeholder='["/products/1.jpg"]'>
+                        </div>
+                        <button type="submit" class="btn btn-primary">ایجاد محصول</button>
+                    </form>
+                    <div class="response-section" id="product-create-response" style="display:none;">
+                        <h3>پاسخ سرور</h3>
+                        <div class="response-box" id="product-create-response-content"></div>
+                    </div>
+                </div>
+
+                <!-- Product Detail -->
+                <div id="product-detail" class="endpoint-details">
+                    <div class="detail-header">
+                        <h2>جزئیات محصول</h2>
+                        <div class="endpoint-path">GET /api/v1/products/:id</div>
+                    </div>
+                    <form onsubmit="callAPI(event, 'product-detail')">
+                        <div class="form-group">
+                            <label>Product ID *</label>
+                            <input type="text" name="id" required placeholder="Product ID...">
+                        </div>
+                        <button type="submit" class="btn btn-primary">دریافت جزئیات</button>
+                    </form>
+                    <div class="response-section" id="product-detail-response" style="display:none;">
+                        <h3>پاسخ سرور</h3>
+                        <div class="response-box" id="product-detail-response-content"></div>
+                    </div>
+                </div>
+
+                <!-- Update Product -->
+                <div id="product-update" class="endpoint-details">
+                    <div class="detail-header">
+                        <h2>ویرایش محصول</h2>
+                        <div class="endpoint-path">PATCH /api/v1/products/:id</div>
+                    </div>
+                    <div class="warning-box">
+                        🔐 نیازمند نقش ادمین
+                    </div>
+                    <form onsubmit="callAPI(event, 'product-update')">
+                        <div class="form-group">
+                            <label>Product ID *</label>
+                            <input type="text" name="id" required placeholder="Product ID...">
+                        </div>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label>قیمت جدید</label>
+                                <input type="number" name="price" placeholder="2500000">
+                            </div>
+                            <div class="form-group">
+                                <label>موجودی جدید</label>
+                                <input type="number" name="stock" placeholder="20">
+                            </div>
+                        </div>
+                        <button type="submit" class="btn btn-primary">ویرایش محصول</button>
+                    </form>
+                    <div class="response-section" id="product-update-response" style="display:none;">
+                        <h3>پاسخ سرور</h3>
+                        <div class="response-box" id="product-update-response-content"></div>
+                    </div>
+                </div>
+
+                <!-- Delete Product -->
+                <div id="product-delete" class="endpoint-details">
+                    <div class="detail-header">
+                        <h2>حذف محصول</h2>
+                        <div class="endpoint-path">DELETE /api/v1/products/:id</div>
+                    </div>
+                    <div class="warning-box">
+                        ⚠️ این عمل قابل بازگشت نیست!
+                    </div>
+                    <form onsubmit="callAPI(event, 'product-delete')">
+                        <div class="form-group">
+                            <label>Product ID *</label>
+                            <input type="text" name="id" required placeholder="Product ID...">
+                        </div>
+                        <button type="submit" class="btn btn-danger">حذف محصول</button>
+                    </form>
+                    <div class="response-section" id="product-delete-response" style="display:none;">
+                        <h3>پاسخ سرور</h3>
+                        <div class="response-box" id="product-delete-response-content"></div>
+                    </div>
+                </div>
+
+                <!-- Categories List -->
+                <div id="categories-list" class="endpoint-details">
+                    <div class="detail-header">
+                        <h2>لیست دسته‌بندی‌ها</h2>
+                        <div class="endpoint-path">GET /api/v1/categories</div>
+                    </div>
+                    <button onclick="callAPI(event, 'categories-list')" class="btn btn-primary">دریافت لیست</button>
+                    <div class="response-section" id="categories-list-response" style="display:none;">
+                        <h3>پاسخ سرور</h3>
+                        <div class="response-box" id="categories-list-response-content"></div>
+                    </div>
+                </div>
+
+                <!-- Create Category -->
+                <div id="category-create" class="endpoint-details">
+                    <div class="detail-header">
+                        <h2>ایجاد دسته‌بندی</h2>
+                        <div class="endpoint-path">POST /api/v1/categories</div>
+                    </div>
+                    <div class="warning-box">
+                        🔐 نیازمند نقش ادمین
+                    </div>
+                    <form onsubmit="callAPI(event, 'category-create')">
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label>نام دسته‌بندی *</label>
+                                <input type="text" name="name" required placeholder="ساعت">
+                            </div>
+                            <div class="form-group">
+                                <label>Slug *</label>
+                                <input type="text" name="slug" required placeholder="watches">
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label>توضیحات</label>
+                            <textarea name="description" placeholder="توضیحات دسته‌بندی..."></textarea>
+                        </div>
+                        <button type="submit" class="btn btn-primary">ایجاد دسته‌بندی</button>
+                    </form>
+                    <div class="response-section" id="category-create-response" style="display:none;">
+                        <h3>پاسخ سرور</h3>
+                        <div class="response-box" id="category-create-response-content"></div>
+                    </div>
+                </div>
+
+                <!-- Cart Get -->
+                <div id="cart-get" class="endpoint-details">
+                    <div class="detail-header">
+                        <h2>مشاهده سبد خرید</h2>
+                        <div class="endpoint-path">GET /api/v1/cart</div>
+                    </div>
+                    <div class="warning-box">
+                        🔐 نیازمند احراز هویت
+                    </div>
+                    <button onclick="callAPI(event, 'cart-get')" class="btn btn-primary">مشاهده سبد</button>
+                    <div class="response-section" id="cart-get-response" style="display:none;">
+                        <h3>پاسخ سرور</h3>
+                        <div class="response-box" id="cart-get-response-content"></div>
+                    </div>
+                </div>
+
+                <!-- Cart Add -->
+                <div id="cart-add" class="endpoint-details">
+                    <div class="detail-header">
+                        <h2>افزودن به سبد خرید</h2>
+                        <div class="endpoint-path">POST /api/v1/cart</div>
+                    </div>
+                    <div class="warning-box">
+                        🔐 نیازمند احراز هویت
+                    </div>
+                    <form onsubmit="callAPI(event, 'cart-add')">
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label>Product ID *</label>
+                                <input type="text" name="productId" required placeholder="Product ID...">
+                            </div>
+                            <div class="form-group">
+                                <label>تعداد *</label>
+                                <input type="number" name="quantity" required value="1" min="1">
+                            </div>
+                        </div>
+                        <button type="submit" class="btn btn-primary">افزودن به سبد</button>
+                    </form>
+                    <div class="response-section" id="cart-add-response" style="display:none;">
+                        <h3>پاسخ سرور</h3>
+                        <div class="response-box" id="cart-add-response-content"></div>
+                    </div>
+                </div>
+
+                <!-- Cart Clear -->
+                <div id="cart-clear" class="endpoint-details">
+                    <div class="detail-header">
+                        <h2>خالی کردن سبد خرید</h2>
+                        <div class="endpoint-path">DELETE /api/v1/cart/clear</div>
+                    </div>
+                    <div class="warning-box">
+                        ⚠️ تمام محصولات از سبد حذف می‌شوند
+                    </div>
+                    <button onclick="callAPI(event, 'cart-clear')" class="btn btn-danger">خالی کردن سبد</button>
+                    <div class="response-section" id="cart-clear-response" style="display:none;">
+                        <h3>پاسخ سرور</h3>
+                        <div class="response-box" id="cart-clear-response-content"></div>
+                    </div>
+                </div>
+
+                <!-- Orders List -->
+                <div id="orders-list" class="endpoint-details">
+                    <div class="detail-header">
+                        <h2>لیست سفارشات</h2>
+                        <div class="endpoint-path">GET /api/v1/orders</div>
+                    </div>
+                    <div class="warning-box">
+                        🔐 نیازمند احراز هویت
+                    </div>
+                    <form onsubmit="callAPI(event, 'orders-list')">
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label>صفحه</label>
+                                <input type="number" name="page" value="1" min="1">
+                            </div>
+                            <div class="form-group">
+                                <label>تعداد در صفحه</label>
+                                <input type="number" name="limit" value="10" min="1" max="100">
+                            </div>
+                        </div>
+                        <button type="submit" class="btn btn-primary">دریافت لیست</button>
+                    </form>
+                    <div class="response-section" id="orders-list-response" style="display:none;">
+                        <h3>پاسخ سرور</h3>
+                        <div class="response-box" id="orders-list-response-content"></div>
+                    </div>
+                </div>
+
+                <!-- Order Detail -->
+                <div id="order-detail" class="endpoint-details">
+                    <div class="detail-header">
+                        <h2>جزئیات سفارش</h2>
+                        <div class="endpoint-path">GET /api/v1/orders/:id</div>
+                    </div>
+                    <div class="warning-box">
+                        🔐 نیازمند احراز هویت
+                    </div>
+                    <form onsubmit="callAPI(event, 'order-detail')">
+                        <div class="form-group">
+                            <label>Order ID *</label>
+                            <input type="text" name="id" required placeholder="Order ID...">
+                        </div>
+                        <button type="submit" class="btn btn-primary">دریافت جزئیات</button>
+                    </form>
+                    <div class="response-section" id="order-detail-response" style="display:none;">
+                        <h3>پاسخ سرور</h3>
+                        <div class="response-box" id="order-detail-response-content"></div>
+                    </div>
+                </div>
+
+                <!-- Checkout -->
+                <div id="checkout" class="endpoint-details">
+                    <div class="detail-header">
+                        <h2>پرداخت و ثبت سفارش</h2>
+                        <div class="endpoint-path">POST /api/v1/checkout</div>
+                    </div>
+                    <div class="warning-box">
+                        🔐 نیازمند احراز هویت و داشتن آدرس
+                    </div>
+                    <form onsubmit="callAPI(event, 'checkout')">
+                        <div class="form-group">
+                            <label>Address ID *</label>
+                            <input type="text" name="addressId" required placeholder="از لیست آدرس‌ها کپی کنید">
+                        </div>
+                        <div class="form-group">
+                            <label>روش پرداخت *</label>
+                            <select name="paymentMethod" required>
+                                <option value="ZARINPAL">زرین‌پال</option>
+                                <option value="CASH_ON_DELIVERY">پرداخت در محل</option>
+                                <option value="BANK_TRANSFER">انتقال بانکی</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>یادداشت سفارش</label>
+                            <textarea name="customerNote" placeholder="توضیحات اضافی..."></textarea>
+                        </div>
+                        <button type="submit" class="btn btn-primary">ثبت سفارش</button>
+                    </form>
+                    <div class="response-section" id="checkout-response" style="display:none;">
+                        <h3>پاسخ سرور</h3>
+                        <div class="response-box" id="checkout-response-content"></div>
+                    </div>
+                </div>
+
+                <!-- Addresses List -->
+                <div id="addresses-list" class="endpoint-details">
+                    <div class="detail-header">
+                        <h2>لیست آدرس‌ها</h2>
+                        <div class="endpoint-path">GET /api/v1/addresses</div>
+                    </div>
+                    <div class="warning-box">
+                        🔐 نیازمند احراز هویت
+                    </div>
+                    <button onclick="callAPI(event, 'addresses-list')" class="btn btn-primary">دریافت لیست</button>
+                    <div class="response-section" id="addresses-list-response" style="display:none;">
+                        <h3>پاسخ سرور</h3>
+                        <div class="response-box" id="addresses-list-response-content"></div>
+                    </div>
+                </div>
+
+                <!-- Create Address -->
+                <div id="address-create" class="endpoint-details">
+                    <div class="detail-header">
+                        <h2>ایجاد آدرس جدید</h2>
+                        <div class="endpoint-path">POST /api/v1/addresses</div>
+                    </div>
+                    <div class="warning-box">
+                        🔐 نیازمند احراز هویت
+                    </div>
+                    <form onsubmit="callAPI(event, 'address-create')">
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label>عنوان آدرس *</label>
+                                <input type="text" name="title" required placeholder="منزل، محل کار، ...">
+                            </div>
+                            <div class="form-group">
+                                <label>نام و نام خانوادگی *</label>
+                                <input type="text" name="fullName" required placeholder="علی احمدی">
+                            </div>
+                        </div>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label>استان *</label>
+                                <input type="text" name="province" required placeholder="تهران">
+                            </div>
+                            <div class="form-group">
+                                <label>شهر *</label>
+                                <input type="text" name="city" required placeholder="تهران">
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label>آدرس کامل *</label>
+                            <textarea name="address" required placeholder="خیابان ولیعصر، نرسیده به میدان ونک، ..."></textarea>
+                        </div>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label>کد پستی *</label>
+                                <input type="text" name="postalCode" required placeholder="1234567890">
+                            </div>
+                            <div class="form-group">
+                                <label>شماره تماس *</label>
+                                <input type="tel" name="phone" required placeholder="09123456789">
+                            </div>
+                        </div>
+                        <button type="submit" class="btn btn-primary">ایجاد آدرس</button>
+                    </form>
+                    <div class="response-section" id="address-create-response" style="display:none;">
+                        <h3>پاسخ سرور</h3>
+                        <div class="response-box" id="address-create-response-content"></div>
+                    </div>
+                </div>
+
+                <!-- Wishlist Get -->
+                <div id="wishlist-get" class="endpoint-details">
+                    <div class="detail-header">
+                        <h2>لیست علاقه‌مندی‌ها</h2>
+                        <div class="endpoint-path">GET /api/v1/wishlist</div>
+                    </div>
+                    <div class="warning-box">
+                        🔐 نیازمند احراز هویت
+                    </div>
+                    <button onclick="callAPI(event, 'wishlist-get')" class="btn btn-primary">دریافت لیست</button>
+                    <div class="response-section" id="wishlist-get-response" style="display:none;">
+                        <h3>پاسخ سرور</h3>
+                        <div class="response-box" id="wishlist-get-response-content"></div>
+                    </div>
+                </div>
+
+                <!-- Wishlist Add -->
+                <div id="wishlist-add" class="endpoint-details">
+                    <div class="detail-header">
+                        <h2>افزودن به علاقه‌مندی‌ها</h2>
+                        <div class="endpoint-path">POST /api/v1/wishlist</div>
+                    </div>
+                    <div class="warning-box">
+                        🔐 نیازمند احراز هویت
+                    </div>
+                    <form onsubmit="callAPI(event, 'wishlist-add')">
+                        <div class="form-group">
+                            <label>Product ID *</label>
+                            <input type="text" name="productId" required placeholder="Product ID...">
+                        </div>
+                        <button type="submit" class="btn btn-primary">افزودن به علاقه‌مندی‌ها</button>
+                    </form>
+                    <div class="response-section" id="wishlist-add-response" style="display:none;">
+                        <h3>پاسخ سرور</h3>
+                        <div class="response-box" id="wishlist-add-response-content"></div>
+                    </div>
+                </div>
+
+                <!-- Health Check -->
+                <div id="health" class="endpoint-details">
+                    <div class="detail-header">
+                        <h2>وضعیت سلامت سرور</h2>
+                        <div class="endpoint-path">GET /api/v1/health</div>
+                    </div>
+                    <button onclick="callAPI(event, 'health')" class="btn btn-primary">بررسی وضعیت</button>
+                    <div class="response-section" id="health-response" style="display:none;">
+                        <h3>پاسخ سرور</h3>
+                        <div class="response-box" id="health-response-content"></div>
+                    </div>
+                </div>
+
+                <!-- Welcome Message -->
+                <div id="welcome" class="endpoint-details active">
+                    <div style="text-align: center; padding: 60px 20px;">
+                        <h1 style="font-size: 3em; color: #667eea; margin-bottom: 20px;">🛍️</h1>
+                        <h2 style="color: #2c3e50; margin-bottom: 15px;">خوش آمدید به محیط تست API مورامور</h2>
+                        <p style="color: #6c757d; font-size: 1.1em; margin-bottom: 30px;">
+                            یک endpoint از سایدبار انتخاب کنید تا شروع کنید
+                        </p>
+                        <div class="info-box" style="max-width: 600px; margin: 0 auto; text-align: right;">
+                            <h3 style="margin-bottom: 10px;">📝 راهنمای شروع سریع:</h3>
+                            <ol style="margin-right: 20px; line-height: 2;">
+                                <li>ابتدا با ادمین پیش‌فرض وارد شوید (بخش احراز هویت > ورود)</li>
+                                <li>لیست محصولات و دسته‌بندی‌ها را مشاهده کنید</li>
+                                <li>محصول جدید ایجاد کنید (نیاز به ادمین)</li>
+                                <li>محصولات را به سبد اضافه کنید</li>
+                                <li>یک آدرس ایجاد کنید</li>
+                                <li>سفارش خود را ثبت کنید</li>
+                            </ol>
+                        </div>
+                        <div style="margin-top: 30px;">
+                            <strong>API Base URL:</strong> http://localhost:3000/api/v1
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const API_BASE = 'http://localhost:3000/api/v1';
+        let accessToken = localStorage.getItem('accessToken') || '';
+        let refreshToken = localStorage.getItem('refreshToken') || '';
+
+        // Update auth status on load
+        updateAuthStatus();
+
+        function updateAuthStatus() {
+            const indicator = document.getElementById('authIndicator');
+            const statusText = document.getElementById('authStatusText');
+            const tokenDisplay = document.getElementById('tokenDisplay');
+
+            if (accessToken) {
+                indicator.classList.add('logged-in');
+                statusText.textContent = 'وارد شده';
+                tokenDisplay.value = accessToken.substring(0, 50) + '...';
+
+                // Update refresh token field if exists
+                const refreshInput = document.getElementById('refreshToken');
+                if (refreshInput) {
+                    refreshInput.value = refreshToken;
+                }
+            } else {
+                indicator.classList.remove('logged-in');
+                statusText.textContent = 'وارد نشده';
+                tokenDisplay.value = '';
+            }
+        }
+
+        function clearAuth() {
+            accessToken = '';
+            refreshToken = '';
+            localStorage.removeItem('accessToken');
+            localStorage.removeItem('refreshToken');
+            updateAuthStatus();
+            alert('از حساب کاربری خارج شدید');
+        }
+
+        function showEndpoint(endpointId) {
+            // Hide all endpoints
+            document.querySelectorAll('.endpoint-details').forEach(el => {
+                el.classList.remove('active');
+            });
+
+            // Remove active class from all buttons
+            document.querySelectorAll('.endpoint-btn').forEach(btn => {
+                btn.classList.remove('active');
+            });
+
+            // Show selected endpoint
+            const endpoint = document.getElementById(endpointId);
+            if (endpoint) {
+                endpoint.classList.add('active');
+
+                // Add active class to button
+                event?.target.classList.add('active');
+            }
+        }
+
+        function loginAsAdmin() {
+            document.getElementById('login-email').value = 'admin@moramor.com';
+            document.getElementById('login-password').value = 'Admin@123456';
+        }
+
+        async function callAPI(event, endpointId) {
+            event.preventDefault();
+
+            const responseSection = document.getElementById(`${endpointId}-response`);
+            const responseContent = document.getElementById(`${endpointId}-response-content`);
+
+            responseSection.style.display = 'block';
+            responseContent.innerHTML = '<div class="loading"></div> در حال ارسال درخواست...';
+
+            let url = API_BASE;
+            let method = 'GET';
+            let body = null;
+            const headers = {
+                'Content-Type': 'application/json',
+            };
+
+            // Add auth token if available
+            if (accessToken) {
+                headers['Authorization'] = `Bearer ${accessToken}`;
+            }
+
+            // Get form data if form exists
+            const formData = new FormData(event.target);
+            const data = {};
+            for (let [key, value] of formData.entries()) {
+                if (value) data[key] = value;
+            }
+
+            // Configure request based on endpoint
+            switch(endpointId) {
+                case 'register':
+                    url += '/auth/register';
+                    method = 'POST';
+                    body = JSON.stringify(data);
+                    break;
+                case 'login':
+                    url += '/auth/login';
+                    method = 'POST';
+                    body = JSON.stringify(data);
+                    break;
+                case 'refresh':
+                    url += '/auth/refresh';
+                    method = 'POST';
+                    body = JSON.stringify({ refreshToken: data.refreshToken });
+                    break;
+                case 'me':
+                    url += '/auth/me';
+                    method = 'GET';
+                    break;
+                case 'products-list':
+                    url += '/products';
+                    const params = new URLSearchParams();
+                    if (data.page) params.append('page', data.page);
+                    if (data.limit) params.append('limit', data.limit);
+                    if (data.search) params.append('search', data.search);
+                    if (params.toString()) url += '?' + params.toString();
+                    method = 'GET';
+                    break;
+                case 'product-create':
+                    url += '/products';
+                    method = 'POST';
+                    // Parse JSON arrays
+                    if (data.materials) data.materials = JSON.parse(data.materials);
+                    if (data.images) data.images = JSON.parse(data.images);
+                    data.price = parseInt(data.price);
+                    data.stock = parseInt(data.stock);
+                    data.discount = parseFloat(data.discount);
+                    body = JSON.stringify(data);
+                    break;
+                case 'product-detail':
+                    url += `/products/${data.id}`;
+                    method = 'GET';
+                    break;
+                case 'product-update':
+                    url += `/products/${data.id}`;
+                    method = 'PATCH';
+                    const updateData = {};
+                    if (data.price) updateData.price = parseInt(data.price);
+                    if (data.stock) updateData.stock = parseInt(data.stock);
+                    body = JSON.stringify(updateData);
+                    break;
+                case 'product-delete':
+                    url += `/products/${data.id}`;
+                    method = 'DELETE';
+                    break;
+                case 'categories-list':
+                    url += '/categories';
+                    method = 'GET';
+                    break;
+                case 'category-create':
+                    url += '/categories';
+                    method = 'POST';
+                    body = JSON.stringify(data);
+                    break;
+                case 'cart-get':
+                    url += '/cart';
+                    method = 'GET';
+                    break;
+                case 'cart-add':
+                    url += '/cart';
+                    method = 'POST';
+                    data.quantity = parseInt(data.quantity);
+                    body = JSON.stringify(data);
+                    break;
+                case 'cart-clear':
+                    url += '/cart/clear';
+                    method = 'DELETE';
+                    break;
+                case 'orders-list':
+                    url += '/orders';
+                    const orderParams = new URLSearchParams();
+                    if (data.page) orderParams.append('page', data.page);
+                    if (data.limit) orderParams.append('limit', data.limit);
+                    if (orderParams.toString()) url += '?' + orderParams.toString();
+                    method = 'GET';
+                    break;
+                case 'order-detail':
+                    url += `/orders/${data.id}`;
+                    method = 'GET';
+                    break;
+                case 'checkout':
+                    url += '/checkout';
+                    method = 'POST';
+                    body = JSON.stringify(data);
+                    break;
+                case 'addresses-list':
+                    url += '/addresses';
+                    method = 'GET';
+                    break;
+                case 'address-create':
+                    url += '/addresses';
+                    method = 'POST';
+                    body = JSON.stringify(data);
+                    break;
+                case 'wishlist-get':
+                    url += '/wishlist';
+                    method = 'GET';
+                    break;
+                case 'wishlist-add':
+                    url += '/wishlist';
+                    method = 'POST';
+                    body = JSON.stringify(data);
+                    break;
+                case 'health':
+                    url += '/health';
+                    method = 'GET';
+                    break;
+            }
+
+            try {
+                const response = await fetch(url, {
+                    method,
+                    headers,
+                    body
+                });
+
+                const result = await response.json();
+
+                // Handle login/register success
+                if ((endpointId === 'login' || endpointId === 'register') && response.ok) {
+                    if (result.accessToken) {
+                        accessToken = result.accessToken;
+                        refreshToken = result.refreshToken;
+                        localStorage.setItem('accessToken', accessToken);
+                        localStorage.setItem('refreshToken', refreshToken);
+                        updateAuthStatus();
+                    }
+                }
+
+                // Handle refresh token success
+                if (endpointId === 'refresh' && response.ok) {
+                    if (result.accessToken) {
+                        accessToken = result.accessToken;
+                        refreshToken = result.refreshToken;
+                        localStorage.setItem('accessToken', accessToken);
+                        localStorage.setItem('refreshToken', refreshToken);
+                        updateAuthStatus();
+                    }
+                }
+
+                // Display response
+                const statusClass = response.ok ? 'status-success' : 'status-error';
+                responseContent.innerHTML = `
+                    <div class="${statusClass}">
+                        HTTP ${response.status} ${response.statusText}
+                    </div>
+                    <pre>${JSON.stringify(result, null, 2)}</pre>
+                `;
+
+            } catch (error) {
+                responseContent.innerHTML = `
+                    <div class="status-error">خطا در ارتباط با سرور</div>
+                    <pre>${error.message}</pre>
+                `;
+            }
+        }
+    </script>
+</body>
+</html>
+

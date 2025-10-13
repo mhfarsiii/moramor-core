@@ -11,9 +11,9 @@ export class ZarinpalService {
   private readonly baseUrl: string;
 
   constructor(private configService: ConfigService) {
-    this.merchantId = this.configService.get<string>('ZARINPAL_MERCHANT_ID');
+    this.merchantId = this.configService.get<string>('ZARINPAL_MERCHANT_ID') || '';
     this.sandbox = this.configService.get<string>('ZARINPAL_SANDBOX') === 'true';
-    this.callbackUrl = this.configService.get<string>('ZARINPAL_CALLBACK_URL');
+    this.callbackUrl = this.configService.get<string>('ZARINPAL_CALLBACK_URL') || '';
     this.baseUrl = this.sandbox
       ? 'https://sandbox.zarinpal.com'
       : 'https://payment.zarinpal.com';

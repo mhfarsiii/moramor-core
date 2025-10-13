@@ -35,7 +35,7 @@ export class OrdersService {
     // Validate products and calculate totals
     let subtotal = 0;
     let discount = 0;
-    const orderItems = [];
+    const orderItems: Array<{ productId: string; quantity: number; price: number; discount: number }> = [];
 
     for (const item of items) {
       const product = await this.prisma.product.findUnique({

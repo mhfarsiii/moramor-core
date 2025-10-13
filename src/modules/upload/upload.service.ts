@@ -17,14 +17,14 @@ export class UploadService {
   private publicUrl: string;
 
   constructor(private configService: ConfigService) {
-    const endpoint = this.configService.get<string>('S3_ENDPOINT');
-    const region = this.configService.get<string>('S3_REGION', 'us-east-1');
-    const accessKeyId = this.configService.get<string>('S3_ACCESS_KEY');
-    const secretAccessKey = this.configService.get<string>('S3_SECRET_KEY');
+    const endpoint = this.configService.get<string>('S3_ENDPOINT') || 'http://localhost:9000';
+    const region = this.configService.get<string>('S3_REGION') || 'us-east-1';
+    const accessKeyId = this.configService.get<string>('S3_ACCESS_KEY') || 'minioadmin';
+    const secretAccessKey = this.configService.get<string>('S3_SECRET_KEY') || 'minioadmin';
     const forcePathStyle = !this.configService.get<string>('S3_USE_SSL');
 
-    this.bucket = this.configService.get<string>('S3_BUCKET');
-    this.publicUrl = this.configService.get<string>('S3_PUBLIC_URL');
+    this.bucket = this.configService.get<string>('S3_BUCKET') || 'moramor-products';
+    this.publicUrl = this.configService.get<string>('S3_PUBLIC_URL') || 'http://localhost:9000/moramor-products';
 
     this.s3Client = new S3Client({
       endpoint,

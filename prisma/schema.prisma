@@ -122,7 +122,6 @@ model Product {
   @@index([categoryId])
   @@index([isFeatured])
   @@index([price])
-  @@fulltext([name, description])
   @@map("products")
 }
 

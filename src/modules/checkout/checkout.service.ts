@@ -80,6 +80,10 @@ export class CheckoutService {
       where: { id: userId },
     });
 
+    if (!user) {
+      throw new BadRequestException('کاربر یافت نشد');
+    }
+
     const paymentResult = await this.paymentService.requestPayment(paymentMethod, {
       amount: order.totalPrice,
       orderId: order.id,
