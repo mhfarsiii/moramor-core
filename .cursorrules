@@ -1,0 +1,381 @@
+# Cursor Rules for Moramor Core - NestJS E-commerce Backend
+# Principal Engineer Best Practices - Microsoft Standards
+
+# =============================================================================
+# PROJECT OVERVIEW & ARCHITECTURE
+# =============================================================================
+# This is a NestJS-based e-commerce backend with the following architecture:
+# - Modular structure with feature-based modules
+# - Prisma ORM with PostgreSQL
+# - JWT authentication with refresh tokens
+# - Role-based access control
+# - RESTful API design
+# - Persian/Farsi language support for error messages
+
+# =============================================================================
+# CODE STYLE & FORMATTING
+# =============================================================================
+
+## TypeScript Standards
+- Use strict TypeScript configuration with proper type annotations
+- Prefer explicit types over `any` - use `unknown` when type is truly unknown
+- Use interface for object shapes, type for unions/primitives
+- Always define return types for public methods
+- Use generic types for reusable components
+- Prefer `const` over `let`, avoid `var` entirely
+- Use optional chaining (`?.`) and nullish coalescing (`??`) operators
+
+## Naming Conventions
+- Use PascalCase for classes, interfaces, enums, and decorators
+- Use camelCase for variables, functions, and methods
+- Use UPPER_SNAKE_CASE for constants
+- Use kebab-case for file names (except for classes which use PascalCase)
+- Use descriptive names that explain intent, not implementation
+- Prefix private methods with underscore `_` when necessary for clarity
+
+## File Organization
+- One class per file
+- Group related functionality in modules
+- Keep DTOs in separate `dto/` folders
+- Place interfaces in `interfaces/` folders
+- Use barrel exports (`index.ts`) for clean imports
+- Maintain consistent folder structure across modules
+
+# =============================================================================
+# NESTJS SPECIFIC RULES
+# =============================================================================
+
+## Module Structure
+- Always use the `@Module()` decorator with proper imports, controllers, and providers
+- Keep modules focused on a single responsibility
+- Use `forRoot()` for configuration modules
+- Use `forFeature()` for feature-specific modules
+- Export services that need to be used by other modules
+
+## Dependency Injection
+- Use constructor injection for all dependencies
+- Mark services with `@Injectable()` decorator
+- Use interfaces for service contracts when possible
+- Prefer composition over inheritance
+- Use custom providers for complex configurations
+
+## Controllers
+- Keep controllers thin - delegate business logic to services
+- Use proper HTTP status codes and decorators
+- Validate input using DTOs with class-validator
+- Use Swagger decorators for API documentation
+- Handle errors appropriately with proper exception filters
+
+## Services
+- Keep services focused on business logic
+- Use async/await for all asynchronous operations
+- Handle errors with appropriate NestJS exceptions
+- Use transactions for database operations that need to be atomic
+- Implement proper logging for debugging and monitoring
+
+## Guards & Interceptors
+- Use guards for authentication and authorization
+- Use interceptors for cross-cutting concerns (logging, caching, etc.)
+- Keep guards focused on single responsibility
+- Use custom decorators for metadata
+
+# =============================================================================
+# DATABASE & PRISMA RULES
+# =============================================================================
+
+## Prisma Usage
+- Always use transactions for multi-table operations
+- Use proper error handling for database operations
+- Implement proper pagination for list endpoints
+- Use select/include to optimize queries
+- Handle unique constraint violations gracefully
+- Use proper indexing for performance
+
+## Data Validation
+- Validate all input data using DTOs
+- Use class-validator decorators for validation
+- Implement custom validators when needed
+- Sanitize input data to prevent injection attacks
+- Use proper data types in Prisma schema
+
+# =============================================================================
+# SECURITY BEST PRACTICES
+# =============================================================================
+
+## Authentication & Authorization
+- Use JWT tokens with proper expiration
+- Implement refresh token rotation
+- Hash passwords with bcrypt (minimum 12 rounds)
+- Use environment variables for secrets
+- Implement rate limiting
+- Use HTTPS in production
+
+## Input Validation
+- Validate all user inputs
+- Sanitize data before database operations
+- Use parameterized queries (Prisma handles this)
+- Implement proper CORS configuration
+- Use helmet for security headers
+
+## Error Handling
+- Never expose sensitive information in error messages
+- Use appropriate HTTP status codes
+- Log errors for monitoring
+- Implement proper error boundaries
+- Use custom exception filters
+
+# =============================================================================
+# PERFORMANCE & OPTIMIZATION
+# =============================================================================
+
+## Database Optimization
+- Use proper indexing
+- Implement pagination for large datasets
+- Use select/include to fetch only needed data
+- Implement caching where appropriate
+- Use database transactions for consistency
+
+## API Performance
+- Implement proper caching strategies
+- Use compression middleware
+- Optimize response payloads
+- Implement proper pagination
+- Use async/await properly
+
+## Memory Management
+- Avoid memory leaks in long-running processes
+- Use proper cleanup in services
+- Implement proper error handling
+- Monitor memory usage
+
+# =============================================================================
+# TESTING STANDARDS
+# =============================================================================
+
+## Unit Tests
+- Write tests for all public methods
+- Use proper mocking for dependencies
+- Test both success and error cases
+- Aim for high code coverage
+- Use descriptive test names
+
+## Integration Tests
+- Test API endpoints end-to-end
+- Use test database for integration tests
+- Clean up test data after tests
+- Test authentication and authorization
+- Test error scenarios
+
+## Test Structure
+- Use AAA pattern (Arrange, Act, Assert)
+- Keep tests focused and simple
+- Use proper test data factories
+- Mock external dependencies
+- Use proper test isolation
+
+# =============================================================================
+# DOCUMENTATION & COMMENTS
+# =============================================================================
+
+## Code Comments
+- Write self-documenting code
+- Add comments for complex business logic
+- Document public APIs with JSDoc
+- Explain "why" not "what" in comments
+- Keep comments up to date
+
+## API Documentation
+- Use Swagger/OpenAPI decorators
+- Document all endpoints and DTOs
+- Provide example requests/responses
+- Document error responses
+- Keep documentation current
+
+## README & Documentation
+- Maintain comprehensive README
+- Document setup and deployment
+- Provide API usage examples
+- Document environment variables
+- Keep documentation current
+
+# =============================================================================
+# ERROR HANDLING & LOGGING
+# =============================================================================
+
+## Error Handling
+- Use appropriate NestJS exceptions
+- Implement global exception filters
+- Log errors with proper context
+- Return user-friendly error messages
+- Handle different error types appropriately
+
+## Logging
+- Use structured logging (Winston)
+- Log important business events
+- Include request context in logs
+- Use appropriate log levels
+- Implement log rotation
+
+# =============================================================================
+# INTERNATIONALIZATION
+# =============================================================================
+
+## Multi-language Support
+- Use Persian/Farsi for user-facing messages
+- Keep error messages consistent
+- Use proper RTL text handling
+- Implement proper date/time formatting
+- Use appropriate number formatting
+
+# =============================================================================
+# DEPLOYMENT & DEVOPS
+# =============================================================================
+
+## Environment Configuration
+- Use environment variables for configuration
+- Provide proper .env templates
+- Use different configs for different environments
+- Validate required environment variables
+- Use proper secret management
+
+## Docker & Containerization
+- Use multi-stage Docker builds
+- Optimize image size
+- Use proper base images
+- Implement health checks
+- Use proper container orchestration
+
+# =============================================================================
+# CODE REVIEW GUIDELINES
+# =============================================================================
+
+## Review Checklist
+- [ ] Code follows TypeScript best practices
+- [ ] Proper error handling implemented
+- [ ] Security considerations addressed
+- [ ] Performance optimizations applied
+- [ ] Tests written and passing
+- [ ] Documentation updated
+- [ ] No hardcoded values
+- [ ] Proper logging implemented
+- [ ] Input validation in place
+- [ ] Database queries optimized
+
+## Pull Request Standards
+- Keep PRs focused and small
+- Write descriptive commit messages
+- Include proper tests
+- Update documentation
+- Address review feedback promptly
+- Use proper branching strategy
+
+# =============================================================================
+# SPECIFIC PROJECT RULES
+# =============================================================================
+
+## Module Structure
+- Each feature should have its own module
+- Modules should be self-contained
+- Use proper dependency injection
+- Export only what's needed
+
+## DTOs
+- Use class-validator for validation
+- Create separate DTOs for create/update operations
+- Use proper validation decorators
+- Implement custom validators when needed
+
+## Services
+- Keep business logic in services
+- Use proper error handling
+- Implement proper logging
+- Use transactions for complex operations
+
+## Controllers
+- Keep controllers thin
+- Use proper HTTP decorators
+- Implement proper validation
+- Use Swagger documentation
+
+## Database
+- Use Prisma for all database operations
+- Implement proper error handling
+- Use transactions for consistency
+- Optimize queries for performance
+
+# =============================================================================
+# QUALITY GATES
+# =============================================================================
+
+## Pre-commit Checks
+- TypeScript compilation passes
+- ESLint passes without errors
+- Prettier formatting applied
+- Tests pass
+- No console.log statements
+- No TODO comments in production code
+
+## Pre-deployment Checks
+- All tests pass
+- Code coverage meets threshold
+- Security scan passes
+- Performance tests pass
+- Documentation is current
+- Environment variables configured
+
+# =============================================================================
+# EMERGENCY PROCEDURES
+# =============================================================================
+
+## Hotfix Process
+- Create hotfix branch from main
+- Implement minimal fix
+- Test thoroughly
+- Deploy immediately
+- Merge back to main
+- Update documentation
+
+## Rollback Process
+- Identify last known good version
+- Deploy previous version
+- Investigate issue
+- Fix in development
+- Test thoroughly
+- Deploy fix
+
+# =============================================================================
+# CONTINUOUS IMPROVEMENT
+# =============================================================================
+
+## Regular Reviews
+- Review code quality monthly
+- Update dependencies regularly
+- Refactor technical debt
+- Improve test coverage
+- Update documentation
+- Review security practices
+
+## Learning & Development
+- Stay updated with NestJS best practices
+- Learn new TypeScript features
+- Improve testing strategies
+- Enhance security knowledge
+- Optimize performance
+- Share knowledge with team
+
+# =============================================================================
+# FINAL NOTES
+# =============================================================================
+
+Remember:
+- Code is written once but read many times
+- Write code for your future self and your team
+- Consistency is more important than perfection
+- Always consider security implications
+- Performance matters in production
+- Documentation is part of the code
+- Tests are not optional
+- Code reviews are learning opportunities
+- Continuous improvement is essential
+
+This project follows enterprise-grade standards suitable for a principal engineer at Microsoft. Every line of code should reflect these principles and best practices.
