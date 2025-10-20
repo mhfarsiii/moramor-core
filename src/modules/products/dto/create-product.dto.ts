@@ -87,7 +87,7 @@ export class CreateProductDto {
   @IsBoolean()
   isActive?: boolean;
 
-  @ApiProperty({ example: 'گردنبند چشم ببر - مورامور', required: false })
+  @ApiProperty({ example: 'گردنبند چشم ببر - مُرامُر', required: false })
   @IsOptional()
   @IsString()
   metaTitle?: string;

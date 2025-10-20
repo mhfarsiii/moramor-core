@@ -85,7 +85,7 @@ async function main() {
         sku: 'NEK-001',
         weight: 12.5,
         isFeatured: true,
-        metaTitle: 'گردنبند چشم ببر - مورامور',
+        metaTitle: 'گردنبند چشم ببر - مُرامُر',
         metaDescription: 'خرید گردنبند چشم ببر با بهترین کیفیت',
       },
     }),
