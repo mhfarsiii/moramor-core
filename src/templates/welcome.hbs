@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html dir="rtl" lang="fa">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>خوش آمدید - {{companyName}}</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Tahoma', 'Arial', sans-serif;
+            direction: rtl;
+            background-color: #f8f9fa;
+            color: #333;
+            line-height: 1.6;
+        }
+
+        .container {
+            max-width: 600px;
+            margin: 0 auto;
+            background-color: #ffffff;
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 30px 20px;
+            text-align: center;
+        }
+
+        .header h1 {
+            font-size: 28px;
+            margin-bottom: 10px;
+            font-weight: bold;
+        }
+
+        .content {
+            padding: 40px 30px;
+        }
+
+        .greeting {
+            font-size: 24px;
+            color: #2c3e50;
+            margin-bottom: 20px;
+            font-weight: 600;
+            text-align: center;
+        }
+
+        .message {
+            font-size: 16px;
+            color: #555;
+            margin-bottom: 30px;
+            line-height: 1.8;
+        }
+
+        .features {
+            background-color: #f8f9fa;
+            border-radius: 6px;
+            padding: 20px;
+            margin: 20px 0;
+        }
+
+        .features h3 {
+            color: #2c3e50;
+            margin-bottom: 15px;
+            font-size: 18px;
+        }
+
+        .features ul {
+            list-style: none;
+            padding: 0;
+        }
+
+        .features li {
+            padding: 8px 0;
+            color: #555;
+            position: relative;
+            padding-right: 20px;
+        }
+
+        .features li:before {
+            content: "✓";
+            color: #28a745;
+            font-weight: bold;
+            position: absolute;
+            right: 0;
+        }
+
+        .cta-button {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 15px 30px;
+            text-decoration: none;
+            border-radius: 6px;
+            display: inline-block;
+            font-size: 16px;
+            font-weight: 600;
+            transition: transform 0.2s ease;
+            box-shadow: 0 4px 8px rgba(102, 126, 234, 0.3);
+            text-align: center;
+            margin: 20px 0;
+        }
+
+        .cta-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 12px rgba(102, 126, 234, 0.4);
+        }
+
+        .footer {
+            background-color: #f8f9fa;
+            padding: 20px 30px;
+            border-top: 1px solid #e9ecef;
+            text-align: center;
+            font-size: 14px;
+            color: #6c757d;
+        }
+
+        @media (max-width: 600px) {
+            .container {
+                margin: 10px;
+                border-radius: 0;
+            }
+
+            .content {
+                padding: 20px;
+            }
+
+            .header {
+                padding: 20px;
+            }
+
+            .header h1 {
+                font-size: 24px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>{{companyName}}</h1>
+            <p>خوش آمدید</p>
+        </div>
+
+        <div class="content">
+            <div class="greeting">🎉 خوش آمدید {{userName}} عزیز!</div>
+
+            <div class="message">
+                از عضویت شما در {{companyName}} بسیار خوشحالیم. حالا می‌توانید از تمامی امکانات فروشگاه ما استفاده کنید.
+            </div>
+
+            <div class="features">
+                <h3>امکانات ویژه برای شما:</h3>
+                <ul>
+                    <li>دسترسی به هزاران محصول با کیفیت</li>
+                    <li>تخفیف‌های ویژه اعضا</li>
+                    <li>پیگیری سفارشات به صورت آنلاین</li>
+                    <li>پشتیبانی ۲۴ ساعته</li>
+                    <li>ارسال رایگان برای خریدهای بالای ۵۰۰ هزار تومان</li>
+                </ul>
+            </div>
+
+            <div style="text-align: center;">
+                <a href="{{frontendUrl}}" class="cta-button">شروع خرید</a>
+            </div>
+
+            <div class="message">
+                اگر سوالی دارید، تیم پشتیبانی ما آماده کمک به شما است.
+            </div>
+        </div>
+
+        <div class="footer">
+            <p>این ایمیل به صورت خودکار ارسال شده است. لطفاً پاسخ ندهید.</p>
+            <p>&copy; ۲۰۲۴ {{companyName}}. تمامی حقوق محفوظ است.</p>
+        </div>
+    </div>
+</body>
+</html>

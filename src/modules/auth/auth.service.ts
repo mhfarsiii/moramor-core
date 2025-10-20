@@ -3,21 +3,29 @@ import {
   UnauthorizedException,
   ConflictException,
   BadRequestException,
+  Logger,
 } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
 import * as bcrypt from 'bcrypt';
+import { randomBytes } from 'crypto';
 import { PrismaService } from '../../common/prisma/prisma.service';
 import { RegisterDto } from './dto/register.dto';
 import { LoginDto } from './dto/login.dto';
+import { ForgotPasswordDto } from './dto/forgot-password.dto';
+import { ResetPasswordDto } from './dto/reset-password.dto';
 import { JwtPayload } from '../../common/interfaces/jwt-payload.interface';
+import { MailService } from './mail.service';
 
 @Injectable()
 export class AuthService {
+  private readonly logger = new Logger(AuthService.name);
+
   constructor(
     private prisma: PrismaService,
     private jwtService: JwtService,
     private configService: ConfigService,
+    private mailService: MailService,
   ) {}
 
   async register(registerDto: RegisterDto) {
@@ -203,6 +211,134 @@ export class AuthService {
       user: userWithoutPassword,
       ...tokens,
     };
+  }
+
+  /**
+   * Handle forgot password request
+   * @param forgotPasswordDto - Contains user email
+   * @returns Promise with success message
+   */
+  async forgotPassword(forgotPasswordDto: ForgotPasswordDto) {
+    const { email } = forgotPasswordDto;
+
+    try {
+      // Check if user exists
+      const user = await this.prisma.user.findUnique({
+        where: { email },
+      });
+
+      // For security, always return success message
+      // This prevents email enumeration attacks
+      if (!user) {
+        this.logger.warn(`Password reset requested for non-existent email: ${email}`);
+        return { message: 'اگر ایمیل در سیستم موجود باشد، لینک بازیابی ارسال شد' };
+      }
+
+      // Check if user has password (not OAuth only)
+      if (!user.password) {
+        this.logger.warn(`Password reset requested for OAuth-only user: ${email}`);
+        return { message: 'اگر ایمیل در سیستم موجود باشد، لینک بازیابی ارسال شد' };
+      }
+
+      // Delete existing reset tokens for this user
+      await this.prisma.passwordResetToken.deleteMany({
+        where: { userId: user.id },
+      });
+
+      // Generate new reset token
+      const resetToken = randomBytes(32).toString('hex');
+      const expiresAt = new Date(Date.now() + 60 * 60 * 1000); // 1 hour
+
+      // Store reset token
+      await this.prisma.passwordResetToken.create({
+        data: {
+          token: resetToken,
+          userId: user.id,
+          expiresAt,
+        },
+      });
+
+      // Send reset email
+      await this.mailService.sendPasswordResetEmail(
+        user.email,
+        resetToken,
+        user.name,
+      );
+
+      this.logger.log(`Password reset email sent to: ${email}`);
+
+      return { message: 'اگر ایمیل در سیستم موجود باشد، لینک بازیابی ارسال شد' };
+    } catch (error) {
+      this.logger.error(`Failed to process forgot password request for ${email}:`, error);
+      throw new BadRequestException('خطا در پردازش درخواست بازیابی رمز عبور');
+    }
+  }
+
+  /**
+   * Handle password reset with token
+   * @param resetPasswordDto - Contains reset token and new password
+   * @returns Promise with success message
+   */
+  async resetPassword(resetPasswordDto: ResetPasswordDto) {
+    const { token, newPassword } = resetPasswordDto;
+
+    try {
+      // Find reset token
+      const resetToken = await this.prisma.passwordResetToken.findUnique({
+        where: { token },
+        include: { user: true },
+      });
+
+      if (!resetToken) {
+        throw new BadRequestException('توکن نامعتبر است');
+      }
+
+      // Check if token is expired
+      if (new Date() > resetToken.expiresAt) {
+        // Clean up expired token
+        await this.prisma.passwordResetToken.delete({
+          where: { id: resetToken.id },
+        });
+        throw new BadRequestException('توکن منقضی شده است');
+      }
+
+      // Check if user still exists and is active
+      if (!resetToken.user.isActive) {
+        throw new BadRequestException('حساب کاربری غیرفعال است');
+      }
+
+      // Hash new password
+      const hashedPassword = await bcrypt.hash(newPassword, 12);
+
+      // Update user password and clean up reset token in a transaction
+      await this.prisma.$transaction(async (tx) => {
+        // Update password
+        await tx.user.update({
+          where: { id: resetToken.userId },
+          data: { password: hashedPassword },
+        });
+
+        // Delete reset token
+        await tx.passwordResetToken.delete({
+          where: { id: resetToken.id },
+        });
+
+        // Delete all refresh tokens for security
+        await tx.refreshToken.deleteMany({
+          where: { userId: resetToken.userId },
+        });
+      });
+
+      this.logger.log(`Password reset successful for user: ${resetToken.user.email}`);
+
+      return { message: 'رمز عبور با موفقیت تغییر کرد' };
+    } catch (error) {
+      if (error instanceof BadRequestException) {
+        throw error;
+      }
+      this.logger.error(`Failed to reset password with token ${token}:`, error);
+      throw new BadRequestException('خطا در تغییر رمز عبور');
+    }
   }
 
   private async generateTokens(userId: string, email: string, role: string) {

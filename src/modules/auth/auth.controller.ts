@@ -5,6 +5,8 @@ import { AuthService } from './auth.service';
 import { RegisterDto } from './dto/register.dto';
 import { LoginDto } from './dto/login.dto';
 import { RefreshTokenDto } from './dto/refresh-token.dto';
+import { ForgotPasswordDto } from './dto/forgot-password.dto';
+import { ResetPasswordDto } from './dto/reset-password.dto';
 import { Public } from '../../common/decorators/public.decorator';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 
@@ -70,6 +72,60 @@ export class AuthController {
   @ApiOperation({ summary: 'Google OAuth Callback' })
   async googleAuthCallback(@Req() req) {
     return this.authService.googleLogin(req.user);
+  }
+
+  @Public()
+  @Post('forgot-password')
+  @ApiOperation({
+    summary: 'درخواست بازیابی رمز عبور',
+    description: 'ارسال لینک بازیابی رمز عبور به ایمیل کاربر'
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'لینک بازیابی ارسال شد',
+    schema: {
+      type: 'object',
+      properties: {
+        message: {
+          type: 'string',
+          example: 'اگر ایمیل در سیستم موجود باشد، لینک بازیابی ارسال شد'
+        }
+      }
+    }
+  })
+  @ApiResponse({
+    status: 400,
+    description: 'داده‌های ورودی نامعتبر است'
+  })
+  async forgotPassword(@Body() forgotPasswordDto: ForgotPasswordDto) {
+    return this.authService.forgotPassword(forgotPasswordDto);
+  }
+
+  @Public()
+  @Post('reset-password')
+  @ApiOperation({
+    summary: 'بازیابی رمز عبور با توکن',
+    description: 'تغییر رمز عبور با استفاده از توکن دریافتی از ایمیل'
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'رمز عبور با موفقیت تغییر کرد',
+    schema: {
+      type: 'object',
+      properties: {
+        message: {
+          type: 'string',
+          example: 'رمز عبور با موفقیت تغییر کرد'
+        }
+      }
+    }
+  })
+  @ApiResponse({
+    status: 400,
+    description: 'توکن نامعتبر یا منقضی شده است'
+  })
+  async resetPassword(@Body() resetPasswordDto: ResetPasswordDto) {
+    return this.authService.resetPassword(resetPasswordDto);
   }
 }
 
