@@ -7,6 +7,7 @@ import { LoginDto } from './dto/login.dto';
 import { RefreshTokenDto } from './dto/refresh-token.dto';
 import { ForgotPasswordDto } from './dto/forgot-password.dto';
 import { ResetPasswordDto } from './dto/reset-password.dto';
+import { VerifyEmailDto } from './dto/verify-email.dto';
 import { Public } from '../../common/decorators/public.decorator';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 
@@ -78,7 +79,7 @@ export class AuthController {
   @Post('forgot-password')
   @ApiOperation({
     summary: 'درخواست بازیابی رمز عبور',
-    description: 'ارسال لینک بازیابی رمز عبور به ایمیل کاربر'
+    description: 'ارسال لینک بازیابی رمز عبور به ایمیل کاربر',
   })
   @ApiResponse({
     status: 200,
@@ -88,14 +89,14 @@ export class AuthController {
       properties: {
         message: {
           type: 'string',
-          example: 'اگر ایمیل در سیستم موجود باشد، لینک بازیابی ارسال شد'
-        }
-      }
-    }
+          example: 'اگر ایمیل در سیستم موجود باشد، لینک بازیابی ارسال شد',
+        },
+      },
+    },
   })
   @ApiResponse({
     status: 400,
-    description: 'داده‌های ورودی نامعتبر است'
+    description: 'داده‌های ورودی نامعتبر است',
   })
   async forgotPassword(@Body() forgotPasswordDto: ForgotPasswordDto) {
     return this.authService.forgotPassword(forgotPasswordDto);
@@ -105,7 +106,7 @@ export class AuthController {
   @Post('reset-password')
   @ApiOperation({
     summary: 'بازیابی رمز عبور با توکن',
-    description: 'تغییر رمز عبور با استفاده از توکن دریافتی از ایمیل'
+    description: 'تغییر رمز عبور با استفاده از توکن دریافتی از ایمیل',
   })
   @ApiResponse({
     status: 200,
@@ -115,17 +116,47 @@ export class AuthController {
       properties: {
         message: {
           type: 'string',
-          example: 'رمز عبور با موفقیت تغییر کرد'
-        }
-      }
-    }
+          example: 'رمز عبور با موفقیت تغییر کرد',
+        },
+      },
+    },
   })
   @ApiResponse({
     status: 400,
-    description: 'توکن نامعتبر یا منقضی شده است'
+    description: 'توکن نامعتبر یا منقضی شده است',
   })
   async resetPassword(@Body() resetPasswordDto: ResetPasswordDto) {
     return this.authService.resetPassword(resetPasswordDto);
   }
-}
 
+  @Public()
+  @Post('verify-email')
+  @ApiOperation({
+    summary: 'تأیید ایمیل کاربر',
+    description: 'تأیید ایمیل کاربر با استفاده از توکن دریافتی از ایمیل',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'ایمیل با موفقیت تأیید شد',
+    schema: {
+      type: 'object',
+      properties: {
+        message: {
+          type: 'string',
+          example: 'ایمیل شما با موفقیت تأیید شد',
+        },
+      },
+    },
+  })
+  @ApiResponse({
+    status: 400,
+    description: 'توکن نامعتبر یا منقضی شده است',
+  })
+  @ApiResponse({
+    status: 404,
+    description: 'توکن تأیید یافت نشد',
+  })
+  async verifyEmail(@Body() verifyEmailDto: VerifyEmailDto) {
+    return this.authService.verifyEmail(verifyEmailDto);
+  }
+}

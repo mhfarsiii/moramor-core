@@ -33,6 +33,7 @@ model User {
   cart          Cart?
   refreshTokens RefreshToken[]
   passwordResetTokens PasswordResetToken[]
+  emailVerificationTokens EmailVerificationToken[]
 
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
@@ -66,6 +67,19 @@ model PasswordResetToken {
   @@index([userId])
   @@index([token])
   @@map("password_reset_tokens")
+}
+
+model EmailVerificationToken {
+  id        String   @id @default(cuid())
+  token     String   @unique
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+  @@index([token])
+  @@map("email_verification_tokens")
 }
 
 enum UserRole {

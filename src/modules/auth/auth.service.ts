@@ -14,6 +14,7 @@ import { RegisterDto } from './dto/register.dto';
 import { LoginDto } from './dto/login.dto';
 import { ForgotPasswordDto } from './dto/forgot-password.dto';
 import { ResetPasswordDto } from './dto/reset-password.dto';
+import { VerifyEmailDto } from './dto/verify-email.dto';
 import { JwtPayload } from '../../common/interfaces/jwt-payload.interface';
 import { MailService } from './mail.service';
 
@@ -43,28 +44,55 @@ export class AuthService {
     // Hash password
     const hashedPassword = await bcrypt.hash(password, 12);
 
-    // Create user
-    const user = await this.prisma.user.create({
-      data: {
-        email,
-        password: hashedPassword,
-        name,
-        phone,
-      },
+    // Create user and send verification email in a transaction
+    const result = await this.prisma.$transaction(async (tx) => {
+      // Create user
+      const user = await tx.user.create({
+        data: {
+          email,
+          password: hashedPassword,
+          name,
+          phone,
+          emailVerified: false, // Explicitly set to false
+        },
+      });
+
+      // Generate verification token
+      const verificationToken = randomBytes(32).toString('hex');
+      const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours
+
+      // Store verification token
+      // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+      // @ts-ignore
+      await tx.emailVerificationToken.create({
+        data: {
+          token: verificationToken,
+          userId: user.id,
+          expiresAt,
+        },
+      });
+
+      return { user, verificationToken };
     });
 
-    // Generate tokens
-    const tokens = await this.generateTokens(user.id, user.email, user.role);
+    // Send verification email
+    await this.mailService.sendEmailVerificationEmail(
+      result.user.email,
+      result.verificationToken,
+      result.user.name,
+    );
 
-    // Store refresh token
-    await this.storeRefreshToken(user.id, tokens.refreshToken);
+    this.logger.log(
+      `Registration successful for user: ${result.user.email}, verification email sent`,
+    );
 
     // Remove password from response
-    const { password: _, ...userWithoutPassword } = user;
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    const { password: _, ...userWithoutPassword } = result.user;
 
     return {
+      message: 'ثبت‌نام با موفقیت انجام شد. لطفاً ایمیل خود را برای تأیید بررسی کنید',
       user: userWithoutPassword,
-      ...tokens,
     };
   }
 
@@ -92,6 +120,11 @@ export class AuthService {
       throw new UnauthorizedException('حساب کاربری شما غیرفعال شده است');
     }
 
+    // Check if email is verified
+    if (!user.emailVerified) {
+      throw new UnauthorizedException('لطفاً ابتدا ایمیل خود را تأیید کنید');
+    }
+
     // Generate tokens
     const tokens = await this.generateTokens(user.id, user.email, user.role);
 
@@ -99,6 +132,8 @@ export class AuthService {
     await this.storeRefreshToken(user.id, tokens.refreshToken);
 
     // Remove password from response
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const { password: _, ...userWithoutPassword } = user;
 
     return {
@@ -110,7 +145,7 @@ export class AuthService {
   async refreshTokens(refreshToken: string) {
     try {
       // Verify refresh token
-      const payload = this.jwtService.verify(refreshToken, {
+      this.jwtService.verify(refreshToken, {
         secret: this.configService.get<string>('JWT_REFRESH_SECRET'),
       });
 
@@ -172,6 +207,7 @@ export class AuthService {
       throw new UnauthorizedException();
     }
 
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const { password: _, ...userWithoutPassword } = user;
     return userWithoutPassword;
   }
@@ -205,6 +241,7 @@ export class AuthService {
     const tokens = await this.generateTokens(user.id, user.email, user.role);
     await this.storeRefreshToken(user.id, tokens.refreshToken);
 
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const { password: _, ...userWithoutPassword } = user;
 
     return {
@@ -259,11 +296,7 @@ export class AuthService {
       });
 
       // Send reset email
-      await this.mailService.sendPasswordResetEmail(
-        user.email,
-        resetToken,
-        user.name,
-      );
+      await this.mailService.sendPasswordResetEmail(user.email, resetToken, user.name);
 
       this.logger.log(`Password reset email sent to: ${email}`);
 
@@ -341,6 +374,82 @@ export class AuthService {
     }
   }
 
+  /**
+   * Handle email verification with token
+   * @param verifyEmailDto - Contains verification token
+   * @returns Promise with success message
+   */
+  async verifyEmail(verifyEmailDto: VerifyEmailDto) {
+    const { token } = verifyEmailDto;
+
+    try {
+      // Find verification token
+      // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+      // @ts-ignore
+      const verificationToken = await this.prisma.emailVerificationToken.findUnique({
+        where: { token },
+        include: { user: true },
+      });
+
+      if (!verificationToken) {
+        throw new BadRequestException('توکن تأیید نامعتبر است');
+      }
+
+      // Check if token is expired
+      if (new Date() > verificationToken.expiresAt) {
+        // Clean up expired token
+        // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+        // @ts-ignore
+        await this.prisma.emailVerificationToken.delete({
+          where: { id: verificationToken.id },
+        });
+        throw new BadRequestException('توکن تأیید منقضی شده است');
+      }
+
+      // Check if user still exists and is active
+      if (!verificationToken.user.isActive) {
+        throw new BadRequestException('حساب کاربری غیرفعال است');
+      }
+
+      // Check if email is already verified
+      if (verificationToken.user.emailVerified) {
+        // Clean up token since it's no longer needed
+        // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+        // @ts-ignore
+        await this.prisma.emailVerificationToken.delete({
+          where: { id: verificationToken.id },
+        });
+        throw new BadRequestException('ایمیل قبلاً تأیید شده است');
+      }
+
+      // Update user email verification status and clean up token in a transaction
+      await this.prisma.$transaction(async (tx) => {
+        // Update email verification status
+        await tx.user.update({
+          where: { id: verificationToken.userId },
+          data: { emailVerified: true },
+        });
+
+        // Delete verification token
+        // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+        // @ts-ignore
+        await tx.emailVerificationToken.delete({
+          where: { id: verificationToken.id },
+        });
+      });
+
+      this.logger.log(`Email verification successful for user: ${verificationToken.user.email}`);
+
+      return { message: 'ایمیل شما با موفقیت تأیید شد' };
+    } catch (error) {
+      if (error instanceof BadRequestException) {
+        throw error;
+      }
+      this.logger.error(`Failed to verify email with token ${token}:`, error);
+      throw new BadRequestException('خطا در تأیید ایمیل');
+    }
+  }
+
   private async generateTokens(userId: string, email: string, role: string) {
     const payload: JwtPayload = {
       sub: userId,
@@ -400,4 +509,3 @@ export class AuthService {
     });
   }
 }
-
