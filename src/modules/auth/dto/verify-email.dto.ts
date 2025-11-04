@@ -10,7 +10,7 @@ export class VerifyEmailDto {
     description: 'توکن تأیید ایمیل',
     example: 'abc123def456ghi789jkl012mno345pqr678stu901vwx234yz',
     minLength: 32,
-    maxLength: 64
+    maxLength: 64,
   })
   @IsString({ message: 'توکن باید رشته باشد' })
   @IsNotEmpty({ message: 'توکن تأیید الزامی است' })
