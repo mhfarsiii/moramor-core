@@ -35,10 +35,7 @@ export class PaymentService {
     private zarinpalService: ZarinpalService,
   ) {}
 
-  async requestPayment(
-    method: PaymentMethod,
-    data: PaymentRequestDto,
-  ): Promise<PaymentResponse> {
+  async requestPayment(method: PaymentMethod, data: PaymentRequestDto): Promise<PaymentResponse> {
     switch (method) {
       case PaymentMethod.ZARINPAL:
         return this.zarinpalService.request(data);
@@ -70,4 +67,3 @@ export class PaymentService {
     }
   }
 }
-

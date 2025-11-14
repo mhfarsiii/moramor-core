@@ -25,11 +25,14 @@ export class CreateCheckoutDto {
   @IsString()
   customerNote?: string;
 
-  @ApiProperty({ required: false, description: 'استفاده از سبد خرید فعلی یا آیتم‌های دستی', type: [CheckoutItem] })
+  @ApiProperty({
+    required: false,
+    description: 'استفاده از سبد خرید فعلی یا آیتم‌های دستی',
+    type: [CheckoutItem],
+  })
   @IsOptional()
   @IsArray()
   @ValidateNested({ each: true })
   @Type(() => CheckoutItem)
   items?: CheckoutItem[];
 }
-

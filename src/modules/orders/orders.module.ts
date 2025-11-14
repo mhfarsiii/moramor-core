@@ -10,4 +10,3 @@ import { ProductsModule } from '../products/products.module';
   exports: [OrdersService],
 })
 export class OrdersModule {}
-

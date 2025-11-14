@@ -12,6 +12,7 @@ import {
 import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from '@nestjs/swagger';
 import { ReviewsService } from './reviews.service';
 import { CreateReviewDto } from './dto/create-review.dto';
+import { QueryReviewDto } from './dto/query-review.dto';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { Public } from '../../common/decorators/public.decorator';
 import { Roles } from '../../common/decorators/roles.decorator';
@@ -47,12 +48,8 @@ export class ReviewsController {
   @ApiBearerAuth('JWT-auth')
   @ApiOperation({ summary: 'دریافت همه نظرات (فقط ادمین)' })
   @ApiResponse({ status: 200, description: 'لیست نظرات' })
-  findAll(
-    @Query('page') page?: number,
-    @Query('limit') limit?: number,
-    @Query('approved') approved?: boolean,
-  ) {
-    return this.reviewsService.findAll(page, limit, approved);
+  findAll(@Query() queryDto: QueryReviewDto) {
+    return this.reviewsService.findAll(queryDto.page, queryDto.limit, queryDto.approved);
   }
 
   @Patch(':id/approve')
@@ -77,4 +74,3 @@ export class ReviewsController {
     return this.reviewsService.remove(id, isAdmin ? undefined : userId);
   }
 }
-

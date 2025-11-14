@@ -218,4 +218,3 @@ export class CartService {
     return { message: 'سبد خرید خالی شد' };
   }
 }
-

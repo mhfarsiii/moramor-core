@@ -24,7 +24,8 @@ export class UploadService {
     const forcePathStyle = !this.configService.get<string>('S3_USE_SSL');
 
     this.bucket = this.configService.get<string>('S3_BUCKET') || 'moramor-products';
-    this.publicUrl = this.configService.get<string>('S3_PUBLIC_URL') || 'http://localhost:9000/moramor-products';
+    this.publicUrl =
+      this.configService.get<string>('S3_PUBLIC_URL') || 'http://localhost:9000/moramor-products';
 
     this.s3Client = new S3Client({
       endpoint,
@@ -37,10 +38,7 @@ export class UploadService {
     });
   }
 
-  async uploadImage(
-    file: Express.Multer.File,
-    folder: string = 'uploads',
-  ): Promise<UploadResult> {
+  async uploadImage(file: Express.Multer.File, folder: string = 'uploads'): Promise<UploadResult> {
     // Process image with Sharp
     const processedImage = await sharp(file.buffer)
       .resize(1200, 1200, {
@@ -89,4 +87,3 @@ export class UploadService {
     await Promise.all(keys.map((key) => this.deleteImage(key)));
   }
 }
-

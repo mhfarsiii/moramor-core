@@ -148,11 +148,7 @@ export class CheckoutService {
     }
 
     // Update order payment status
-    await this.ordersService.updatePaymentStatus(
-      order.id,
-      PaymentStatus.PAID,
-      verifyResult.refId,
-    );
+    await this.ordersService.updatePaymentStatus(order.id, PaymentStatus.PAID, verifyResult.refId);
 
     return {
       success: true,
@@ -163,4 +159,3 @@ export class CheckoutService {
     };
   }
 }
-

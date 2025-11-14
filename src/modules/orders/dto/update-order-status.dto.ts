@@ -17,4 +17,3 @@ export class UpdateOrderStatusDto {
   @IsString()
   adminNote?: string;
 }
-

@@ -7,4 +7,3 @@ import { ZarinpalService } from './services/zarinpal.service';
   exports: [PaymentService],
 })
 export class PaymentModule {}
-

@@ -12,4 +12,3 @@ import { AddressesModule } from '../addresses/addresses.module';
   providers: [CheckoutService],
 })
 export class CheckoutModule {}
-

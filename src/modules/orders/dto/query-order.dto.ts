@@ -28,4 +28,3 @@ export class QueryOrderDto {
   @IsIn(Object.values(PaymentStatus))
   paymentStatus?: PaymentStatus;
 }
-

@@ -1,7 +1,12 @@
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import axios from 'axios';
-import { PaymentRequestDto, PaymentResponse, PaymentVerifyDto, PaymentVerifyResponse } from '../payment.service';
+import {
+  PaymentRequestDto,
+  PaymentResponse,
+  PaymentVerifyDto,
+  PaymentVerifyResponse,
+} from '../payment.service';
 
 @Injectable()
 export class ZarinpalService {
@@ -14,9 +19,7 @@ export class ZarinpalService {
     this.merchantId = this.configService.get<string>('ZARINPAL_MERCHANT_ID') || '';
     this.sandbox = this.configService.get<string>('ZARINPAL_SANDBOX') === 'true';
     this.callbackUrl = this.configService.get<string>('ZARINPAL_CALLBACK_URL') || '';
-    this.baseUrl = this.sandbox
-      ? 'https://sandbox.zarinpal.com'
-      : 'https://payment.zarinpal.com';
+    this.baseUrl = this.sandbox ? 'https://sandbox.zarinpal.com' : 'https://payment.zarinpal.com';
   }
 
   async request(data: PaymentRequestDto): Promise<PaymentResponse> {
@@ -84,4 +87,3 @@ export class ZarinpalService {
     }
   }
 }
-

@@ -27,7 +27,8 @@ export class MailService {
       const frontendUrl = this.configService.get<string>('FRONTEND_URL', 'http://localhost:3000');
       const resetUrl = `${frontendUrl}/reset-password?token=${resetToken}`;
 
-      await this.mailerService.sendMail({
+      // Add timeout to prevent hanging connections
+      const sendMailPromise = this.mailerService.sendMail({
         to: email,
         subject: 'بازیابی رمز عبور - فروشگاه مُرامُر',
         template: 'password-reset',
@@ -38,6 +39,15 @@ export class MailService {
           companyName: 'فروشگاه مُرامُر',
         },
       });
+
+      // Set timeout of 10 seconds for email sending
+      const timeoutPromise = new Promise<void>((_, reject) => {
+        setTimeout(() => {
+          reject(new Error('Email sending timeout after 10 seconds'));
+        }, 10000);
+      });
+
+      await Promise.race([sendMailPromise, timeoutPromise]);
 
       this.logger.log(`Password reset email sent successfully to ${email}`);
     } catch (error) {
@@ -87,7 +97,8 @@ export class MailService {
       const frontendUrl = this.configService.get<string>('FRONTEND_URL', 'http://localhost:3000');
       const verificationUrl = `${frontendUrl}/verify-email?token=${verificationToken}`;
 
-      await this.mailerService.sendMail({
+      // Add timeout to prevent hanging connections
+      const sendMailPromise = this.mailerService.sendMail({
         to: email,
         subject: 'تأیید ایمیل - فروشگاه مُرامُر',
         template: 'email-verification',
@@ -99,10 +110,20 @@ export class MailService {
         },
       });
 
+      // Set timeout of 10 seconds for email sending
+      const timeoutPromise = new Promise<void>((_, reject) => {
+        setTimeout(() => {
+          reject(new Error('Email sending timeout after 10 seconds'));
+        }, 10000);
+      });
+
+      await Promise.race([sendMailPromise, timeoutPromise]);
+
       this.logger.log(`Email verification email sent successfully to ${email}`);
     } catch (error) {
+      // Log error but don't throw to prevent server crashes
       this.logger.error(`Failed to send email verification email to ${email}:`, error);
-      throw error;
+      // Don't rethrow - let the calling code handle it gracefully
     }
   }
 }

@@ -5,6 +5,19 @@ import { ConfigService } from '@nestjs/config';
 import * as compression from 'compression';
 import helmet from 'helmet';
 import { AppModule } from './app.module';
+import { AllExceptionsFilter } from './common/filters/http-exception.filter';
+
+// Handle unhandled promise rejections to prevent server crashes
+process.on('unhandledRejection', (reason: unknown, promise: Promise<any>) => {
+  console.error('Unhandled Rejection at:', promise, 'reason:', reason);
+  // Don't exit the process, just log the error
+});
+
+// Handle uncaught exceptions to prevent server crashes
+process.on('uncaughtException', (error: Error) => {
+  console.error('Uncaught Exception:', error);
+  // Don't exit the process, just log the error
+});
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule, {
@@ -12,6 +25,9 @@ async function bootstrap() {
   });
 
   const configService = app.get(ConfigService);
+
+  // Global exception filter to catch all errors
+  app.useGlobalFilters(new AllExceptionsFilter());
 
   // Security
   app.use(
@@ -96,4 +112,3 @@ async function bootstrap() {
 }
 
 bootstrap();
-

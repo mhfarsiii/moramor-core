@@ -6,4 +6,3 @@ export class AddToWishlistDto {
   @IsString()
   productId: string;
 }
-

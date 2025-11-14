@@ -36,34 +36,51 @@ import { HealthController } from './health/health.controller';
     ThrottlerModule.forRoot([
       {
         ttl: parseInt(process.env.THROTTLE_TTL || '60', 10) * 1000,
-        limit: parseInt(process.env.THROTTLE_LIMIT || '10', 10),
+        limit: parseInt(process.env.THROTTLE_LIMIT || '10', 1000),
       },
     ]),
 
     // Email Configuration
     MailerModule.forRootAsync({
       imports: [ConfigModule],
-      useFactory: async (configService: ConfigService) => ({
-        transport: {
-          host: configService.get<string>('MAIL_HOST', 'smtp.gmail.com'),
-          port: configService.get<number>('MAIL_PORT', 587),
-          secure: false, // true for 465, false for other ports
-          auth: {
-            user: configService.get<string>('MAIL_USER'),
-            pass: configService.get<string>('MAIL_PASS'),
+      useFactory: async (configService: ConfigService) => {
+        const mailUser = configService.get<string>('MAIL_USER');
+        const mailPass = configService.get<string>('MAIL_PASS');
+
+        // Determine template directory path - works in both dev and production
+        // Use project root to find src/templates, which works regardless of where code is running from
+        const templateDir = join(process.cwd(), 'src', 'templates');
+
+        return {
+          transport: {
+            host: configService.get<string>('MAIL_HOST', 'smtp.gmail.com'),
+            port: configService.get<number>('MAIL_PORT', 587),
+            secure: false, // true for 465, false for other ports
+            connectionTimeout: 10000, // 10 seconds connection timeout
+            greetingTimeout: 10000, // 10 seconds greeting timeout
+            socketTimeout: 10000, // 10 seconds socket timeout
+            ...(mailUser &&
+              mailPass && {
+                auth: {
+                  user: mailUser,
+                  pass: mailPass,
+                },
+              }),
           },
-        },
-        defaults: {
-          from: `"${configService.get<string>('MAIL_FROM_NAME', 'Moramor Store')}" <${configService.get<string>('MAIL_USER')}>`,
-        },
-        template: {
-          dir: join(__dirname, '..', 'templates'),
-          adapter: new HandlebarsAdapter(),
-          options: {
-            strict: true,
+          defaults: {
+            from: mailUser
+              ? `"${configService.get<string>('MAIL_FROM_NAME', 'Moramor Store')}" <${mailUser}>`
+              : `"${configService.get<string>('MAIL_FROM_NAME', 'Moramor Store')}" <noreply@moramor.com>`,
           },
-        },
-      }),
+          template: {
+            dir: templateDir,
+            adapter: new HandlebarsAdapter(),
+            options: {
+              strict: true,
+            },
+          },
+        };
+      },
       inject: [ConfigService],
     }),
 
@@ -97,4 +114,3 @@ import { HealthController } from './health/health.controller';
   ],
 })
 export class AppModule {}
-

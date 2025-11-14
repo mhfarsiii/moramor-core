@@ -97,4 +97,3 @@ export class CreateProductDto {
   @IsString()
   metaDescription?: string;
 }
-

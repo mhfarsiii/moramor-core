@@ -41,4 +41,3 @@ export class WishlistController {
     return this.wishlistService.check(userId, productId);
   }
 }
-

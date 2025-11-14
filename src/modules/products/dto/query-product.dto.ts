@@ -53,4 +53,3 @@ export class QueryProductDto {
   @Type(() => Boolean)
   featured?: boolean;
 }
-

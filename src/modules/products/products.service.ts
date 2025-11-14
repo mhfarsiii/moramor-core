@@ -293,4 +293,3 @@ export class ProductsService {
     return product.stock >= quantity;
   }
 }
-

@@ -35,4 +35,3 @@ export class CreateAddressDto {
   @IsBoolean()
   isDefault?: boolean;
 }
-

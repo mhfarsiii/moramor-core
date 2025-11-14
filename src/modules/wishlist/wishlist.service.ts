@@ -109,4 +109,3 @@ export class WishlistService {
     return { inWishlist: !!item };
   }
 }
-

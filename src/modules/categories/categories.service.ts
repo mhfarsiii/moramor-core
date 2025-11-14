@@ -163,15 +163,11 @@ export class CategoriesService {
     }
 
     if (category.products.length > 0) {
-      throw new ConflictException(
-        'این دسته‌بندی دارای محصول است و نمی‌توان آن را حذف کرد',
-      );
+      throw new ConflictException('این دسته‌بندی دارای محصول است و نمی‌توان آن را حذف کرد');
     }
 
     if (category.children.length > 0) {
-      throw new ConflictException(
-        'این دسته‌بندی دارای زیردسته است و نمی‌توان آن را حذف کرد',
-      );
+      throw new ConflictException('این دسته‌بندی دارای زیردسته است و نمی‌توان آن را حذف کرد');
     }
 
     await this.prisma.category.delete({
@@ -181,4 +177,3 @@ export class CategoriesService {
     return { message: 'دسته‌بندی با موفقیت حذف شد' };
   }
 }
-

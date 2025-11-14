@@ -1,6 +1,8 @@
-import { Controller, Post, Body, Get, UseGuards, Req } from '@nestjs/common';
+import { Controller, Post, Body, Get, UseGuards, Req, Res } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from '@nestjs/swagger';
 import { AuthGuard } from '@nestjs/passport';
+import { Response } from 'express';
+import { ConfigService } from '@nestjs/config';
 import { AuthService } from './auth.service';
 import { RegisterDto } from './dto/register.dto';
 import { LoginDto } from './dto/login.dto';
@@ -14,7 +16,10 @@ import { CurrentUser } from '../../common/decorators/current-user.decorator';
 @ApiTags('Auth')
 @Controller('auth')
 export class AuthController {
-  constructor(private readonly authService: AuthService) {}
+  constructor(
+    private readonly authService: AuthService,
+    private readonly configService: ConfigService,
+  ) {}
 
   @Public()
   @Post('register')
@@ -71,8 +76,30 @@ export class AuthController {
   @Get('google/callback')
   @UseGuards(AuthGuard('google'))
   @ApiOperation({ summary: 'Google OAuth Callback' })
-  async googleAuthCallback(@Req() req) {
-    return this.authService.googleLogin(req.user);
+  async googleAuthCallback(@Req() req, @Res() res: Response) {
+    try {
+      // Authenticate user and get tokens
+      const authData = await this.authService.googleLogin(req.user);
+
+      // Get frontend URL from environment
+      const frontendUrl = this.configService.get<string>('FRONTEND_URL') || 'http://localhost:3001';
+
+      // Encode tokens for URL safety
+      const accessToken = encodeURIComponent(authData.accessToken);
+      const refreshToken = encodeURIComponent(authData.refreshToken);
+      const userId = encodeURIComponent(authData.user.id);
+
+      // Redirect to frontend with tokens as query parameters
+      const redirectUrl = `${frontendUrl}/auth/callback?accessToken=${accessToken}&refreshToken=${refreshToken}&userId=${userId}`;
+
+      return res.redirect(redirectUrl);
+    } catch (error) {
+      // If authentication fails, redirect to error page
+      const frontendUrl = this.configService.get<string>('FRONTEND_URL') || 'http://localhost:3001';
+      return res.redirect(
+        `${frontendUrl}/auth/error?message=${encodeURIComponent('خطا در احراز هویت با Google')}`,
+      );
+    }
   }
 
   @Public()

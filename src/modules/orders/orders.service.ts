@@ -35,7 +35,12 @@ export class OrdersService {
     // Validate products and calculate totals
     let subtotal = 0;
     let discount = 0;
-    const orderItems: Array<{ productId: string; quantity: number; price: number; discount: number }> = [];
+    const orderItems: Array<{
+      productId: string;
+      quantity: number;
+      price: number;
+      discount: number;
+    }> = [];
 
     for (const item of items) {
       const product = await this.prisma.product.findUnique({
@@ -53,7 +58,7 @@ export class OrdersService {
       }
 
       const itemPrice = product.price * item.quantity;
-      const itemDiscount = (product.price * product.discount / 100) * item.quantity;
+      const itemDiscount = ((product.price * product.discount) / 100) * item.quantity;
 
       subtotal += itemPrice;
       discount += itemDiscount;
@@ -285,7 +290,9 @@ export class OrdersService {
     }
 
     if (order.paymentStatus === PaymentStatus.PAID) {
-      throw new BadRequestException('سفارش پرداخت شده را نمی‌توان لغو کرد. لطفاً درخواست مرجوعی ثبت کنید');
+      throw new BadRequestException(
+        'سفارش پرداخت شده را نمی‌توان لغو کرد. لطفاً درخواست مرجوعی ثبت کنید',
+      );
     }
 
     // Return stock
@@ -336,4 +343,3 @@ export class OrdersService {
     return `ORD-${year}${month}${day}-${orderNum}`;
   }
 }
-

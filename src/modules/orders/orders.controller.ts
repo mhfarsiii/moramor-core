@@ -1,13 +1,4 @@
-import {
-  Controller,
-  Get,
-  Patch,
-  Param,
-  Query,
-  Body,
-  Delete,
-  UseGuards,
-} from '@nestjs/common';
+import { Controller, Get, Patch, Param, Query, Body, Delete, UseGuards } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from '@nestjs/swagger';
 import { OrdersService } from './orders.service';
 import { QueryOrderDto } from './dto/query-order.dto';
@@ -67,4 +58,3 @@ export class OrdersController {
     return this.ordersService.cancel(id, isAdmin ? undefined : userId);
   }
 }
-

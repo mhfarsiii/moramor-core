@@ -2,6 +2,7 @@ import { Controller, Get, Put, Body, Param, Query, UseGuards } from '@nestjs/com
 import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from '@nestjs/swagger';
 import { UsersService } from './users.service';
 import { UpdateUserDto } from './dto/update-user.dto';
+import { QueryUserDto } from './dto/query-user.dto';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { Roles } from '../../common/decorators/roles.decorator';
 import { RolesGuard } from '../../common/guards/roles.guard';
@@ -32,8 +33,8 @@ export class UsersController {
   @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN)
   @ApiOperation({ summary: 'دریافت لیست کاربران (فقط ادمین)' })
   @ApiResponse({ status: 200, description: 'لیست کاربران' })
-  async findAll(@Query('page') page?: number, @Query('limit') limit?: number) {
-    return this.usersService.findAll(page, limit);
+  async findAll(@Query() queryDto: QueryUserDto) {
+    return this.usersService.findAll(queryDto.page, queryDto.limit);
   }
 
   @Get(':id')
@@ -46,4 +47,3 @@ export class UsersController {
     return this.usersService.findOne(id);
   }
 }
-
