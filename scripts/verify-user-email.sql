@@ -15,3 +15,6 @@ WHERE email = 'mhfarsi002022@gmail.com';
 -- ⚠️ هشدار: این دستور فقط برای محیط Development است!
 -- UPDATE users SET "emailVerified" = true WHERE "emailVerified" = false;
 
+
+
+

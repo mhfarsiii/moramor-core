@@ -182,3 +182,6 @@ MAIL_PASS=your-password
 
 **نکته مهم**: در Production حتماً از App Password استفاده کنید و هرگز رمز عبور عادی Gmail را در کد قرار ندهید.
 
+
+
+
