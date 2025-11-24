@@ -9,6 +9,7 @@ import {
 } from '@nestjs/common';
 import { FileInterceptor, FilesInterceptor } from '@nestjs/platform-express';
 import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth, ApiConsumes } from '@nestjs/swagger';
+import { memoryStorage } from 'multer';
 import { UploadService } from './upload.service';
 import { Roles } from '../../common/decorators/roles.decorator';
 import { RolesGuard } from '../../common/guards/roles.guard';
@@ -28,6 +29,7 @@ export class UploadController {
   @ApiResponse({ status: 201, description: 'تصویر با موفقیت آپلود شد' })
   @UseInterceptors(
     FileInterceptor('file', {
+      storage: memoryStorage(),
       limits: {
         fileSize: 5 * 1024 * 1024, // 5MB
       },
@@ -54,6 +56,7 @@ export class UploadController {
   @ApiResponse({ status: 201, description: 'تصاویر با موفقیت آپلود شدند' })
   @UseInterceptors(
     FilesInterceptor('files', 10, {
+      storage: memoryStorage(),
       limits: {
         fileSize: 5 * 1024 * 1024, // 5MB per file
       },

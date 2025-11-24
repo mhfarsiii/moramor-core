@@ -17,17 +17,7 @@ export class CartService {
       include: {
         items: {
           include: {
-            product: {
-              select: {
-                id: true,
-                name: true,
-                slug: true,
-                price: true,
-                discount: true,
-                images: true,
-                stock: true,
-              },
-            },
+            product: true,
           },
         },
       },
@@ -39,29 +29,36 @@ export class CartService {
         include: {
           items: {
             include: {
-              product: {
-                select: {
-                  id: true,
-                  name: true,
-                  slug: true,
-                  price: true,
-                  discount: true,
-                  images: true,
-                  stock: true,
-                },
-              },
+              product: true,
             },
           },
         },
       });
     }
 
+    // Shape the response to include only necessary product fields
+    const cartWithShapedProducts = {
+      ...cart,
+      items: cart.items.map((item) => ({
+        ...item,
+        product: {
+          id: item.product.id,
+          name: item.product.name,
+          slug: item.product.slug,
+          price: item.product.price,
+          discount: item.product.discount,
+          images: item.product.images || [],
+          stock: item.product.stock,
+        },
+      })),
+    };
+
     // Calculate totals
-    const subtotal = cart.items.reduce((sum, item) => {
+    const subtotal = cartWithShapedProducts.items.reduce((sum, item) => {
       return sum + item.product.price * item.quantity;
     }, 0);
 
-    const discount = cart.items.reduce((sum, item) => {
+    const discount = cartWithShapedProducts.items.reduce((sum, item) => {
       const discountAmount = (item.product.price * item.product.discount) / 100;
       return sum + discountAmount * item.quantity;
     }, 0);
@@ -69,11 +66,11 @@ export class CartService {
     const total = subtotal - discount;
 
     return {
-      ...cart,
+      ...cartWithShapedProducts,
       subtotal,
       discount,
       total,
-      itemCount: cart.items.reduce((sum, item) => sum + item.quantity, 0),
+      itemCount: cartWithShapedProducts.items.reduce((sum, item) => sum + item.quantity, 0),
     };
   }
 
