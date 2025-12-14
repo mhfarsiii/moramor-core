@@ -48,7 +48,7 @@ export class AddressesService {
   }
 
   async update(id: string, userId: string, updateAddressDto: UpdateAddressDto) {
-    const address = await this.findOne(id, userId);
+    await this.findOne(id, userId);
 
     // If this is set as default, unset other defaults
     if (updateAddressDto.isDefault) {
