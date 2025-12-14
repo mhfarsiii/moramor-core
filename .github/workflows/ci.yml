@@ -199,5 +199,5 @@ jobs:
             cd /root/project-core
             docker compose pull
             docker compose up -d
-            docker compose exec -T app npx prisma migrate deploy
+            docker compose exec -T core npx prisma migrate deploy
 
