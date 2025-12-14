@@ -45,28 +45,23 @@ jobs:
         with:
           node-version: '18'
           cache: 'npm'
-          cache-dependency-path: apps/core/package-lock.json
+          cache-dependency-path: package-lock.json
 
       - name: Install dependencies
-        working-directory: apps/core
         run: npm ci
 
       - name: Run linter
-        working-directory: apps/core
         run: npm run lint
 
       - name: Generate Prisma Client
-        working-directory: apps/core
         run: npx prisma generate
 
       - name: Run database migrations
-        working-directory: apps/core
         run: npx prisma migrate deploy
         env:
           DATABASE_URL: postgresql://moramor:moramor123@localhost:5432/moramor_test?schema=public
 
       - name: Run tests
-        working-directory: apps/core
         run: npm test
         env:
           DATABASE_URL: postgresql://moramor:moramor123@localhost:5432/moramor_test?schema=public
@@ -74,7 +69,6 @@ jobs:
           JWT_REFRESH_SECRET: test-refresh-secret-key
 
       - name: Run test coverage
-        working-directory: apps/core
         run: npm run test:cov
         env:
           DATABASE_URL: postgresql://moramor:moramor123@localhost:5432/moramor_test?schema=public
@@ -82,7 +76,7 @@ jobs:
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@v3
         with:
-          files: apps/core/coverage/lcov.info
+          files: coverage/lcov.info
           flags: unittests
           name: codecov-umbrella
 
@@ -118,8 +112,8 @@ jobs:
       - name: Build and push
         uses: docker/build-push-action@v4
         with:
-          context: apps/core
-          file: apps/core/Dockerfile
+          context: .
+          file: ./Dockerfile
           push: ${{ steps.docker-creds.outputs.has_creds == 'true' }}
           tags: |
             ${{ steps.docker-creds.outputs.has_creds == 'true' && format('{0}/moramor-backend:latest', secrets.DOCKER_USERNAME) || 'moramor-backend:local' }}
