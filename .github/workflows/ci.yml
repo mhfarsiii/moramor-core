@@ -160,7 +160,7 @@ jobs:
           username: ${{ secrets.PRODUCTION_USERNAME }}
           key: ${{ secrets.PRODUCTION_SSH_KEY }}
           script: |
-            cd /opt/moramor-backend
+            cd /root/project-core
             docker-compose pull
             docker-compose up -d
             docker-compose exec -T app npx prisma migrate deploy
