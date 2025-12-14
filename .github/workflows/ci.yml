@@ -157,9 +157,9 @@ jobs:
           timeout: 30s
           script: |
             cd /opt/moramor-backend
-            docker-compose pull
-            docker-compose up -d
-            docker-compose exec -T app npx prisma migrate deploy
+            docker compose pull
+            docker compose up -d
+            docker compose exec -T app npx prisma migrate deploy
 
   deploy-production:
     name: Deploy to Production
@@ -197,7 +197,7 @@ jobs:
           timeout: 30s
           script: |
             cd /root/project-core
-            docker-compose pull
-            docker-compose up -d
-            docker-compose exec -T app npx prisma migrate deploy
+            docker compose pull
+            docker compose up -d
+            docker compose exec -T app npx prisma migrate deploy
 
