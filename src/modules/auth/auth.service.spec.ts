@@ -4,6 +4,7 @@ import { ConfigService } from '@nestjs/config';
 import { ConflictException, UnauthorizedException } from '@nestjs/common';
 import { AuthService } from './auth.service';
 import { PrismaService } from '../../common/prisma/prisma.service';
+import { MailService } from './mail.service';
 import * as bcrypt from 'bcrypt';
 
 // Mock bcrypt
@@ -24,6 +25,12 @@ describe('AuthService', () => {
       delete: jest.fn(),
       deleteMany: jest.fn(),
     },
+    $transaction: jest.fn(),
+    emailVerificationToken: {
+      create: jest.fn(),
+      findUnique: jest.fn(),
+      delete: jest.fn(),
+    },
   };
 
   const mockJwtService = {
@@ -43,6 +50,12 @@ describe('AuthService', () => {
     }),
   };
 
+  const mockMailService = {
+    sendEmailVerificationEmail: jest.fn(),
+    sendPasswordResetEmail: jest.fn(),
+    sendWelcomeEmail: jest.fn(),
+  };
+
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
@@ -58,6 +71,10 @@ describe('AuthService', () => {
         {
           provide: ConfigService,
           useValue: mockConfigService,
+        },
+        {
+          provide: MailService,
+          useValue: mockMailService,
         },
       ],
     }).compile();
@@ -84,22 +101,38 @@ describe('AuthService', () => {
         password: hashedPassword,
         name: registerDto.name,
         role: 'USER',
+        emailVerified: false,
       };
 
       mockPrismaService.user.findUnique.mockResolvedValue(null);
       (bcrypt.hash as jest.Mock).mockResolvedValue(hashedPassword);
-      mockPrismaService.user.create.mockResolvedValue(mockUser);
-      mockJwtService.signAsync.mockResolvedValueOnce('access-token');
-      mockJwtService.signAsync.mockResolvedValueOnce('refresh-token');
-      mockPrismaService.refreshToken.create.mockResolvedValue({});
+
+      // Mock the transaction to return user and verificationToken
+      mockPrismaService.$transaction.mockImplementation(async (callback) => {
+        const tx = {
+          user: {
+            create: jest.fn().mockResolvedValue(mockUser),
+          },
+          emailVerificationToken: {
+            create: jest.fn().mockResolvedValue({}),
+          },
+        };
+        return callback(tx);
+      });
+
+      mockMailService.sendEmailVerificationEmail.mockResolvedValue(undefined);
 
       const result = await service.register(registerDto);
 
       expect(result).toHaveProperty('user');
-      expect(result).toHaveProperty('accessToken');
-      expect(result).toHaveProperty('refreshToken');
+      expect(result).toHaveProperty('message');
       expect(result.user.email).toBe(registerDto.email);
-      expect(mockPrismaService.user.create).toHaveBeenCalled();
+      expect(mockPrismaService.$transaction).toHaveBeenCalled();
+      expect(mockMailService.sendEmailVerificationEmail).toHaveBeenCalledWith(
+        registerDto.email,
+        expect.any(String),
+        registerDto.name,
+      );
     });
 
     it('should throw ConflictException if user already exists', async () => {
@@ -129,6 +162,7 @@ describe('AuthService', () => {
         name: 'Test User',
         role: 'USER',
         isActive: true,
+        emailVerified: true,
       };
 
       mockPrismaService.user.findUnique.mockResolvedValue(mockUser);
