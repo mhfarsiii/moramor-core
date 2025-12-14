@@ -131,12 +131,30 @@ jobs:
       url: https://staging-api.moramor.com
 
     steps:
+      - name: Check SSH secrets
+        run: |
+          if [ -z "${{ secrets.STAGING_HOST }}" ]; then
+            echo "Error: STAGING_HOST secret is not set"
+            exit 1
+          fi
+          if [ -z "${{ secrets.STAGING_USERNAME }}" ]; then
+            echo "Error: STAGING_USERNAME secret is not set"
+            exit 1
+          fi
+          if [ -z "${{ secrets.STAGING_SSH_KEY }}" ]; then
+            echo "Error: STAGING_SSH_KEY secret is not set"
+            exit 1
+          fi
+          echo "All SSH secrets are configured"
+
       - name: Deploy to staging server
-        uses: appleboy/ssh-action@master
+        uses: appleboy/ssh-action@v1.0.3
         with:
           host: ${{ secrets.STAGING_HOST }}
           username: ${{ secrets.STAGING_USERNAME }}
           key: ${{ secrets.STAGING_SSH_KEY }}
+          port: ${{ secrets.STAGING_SSH_PORT || 22 }}
+          timeout: 30s
           script: |
             cd /opt/moramor-backend
             docker-compose pull
@@ -153,12 +171,30 @@ jobs:
       url: https://api.moramor.com
 
     steps:
+      - name: Check SSH secrets
+        run: |
+          if [ -z "${{ secrets.PRODUCTION_HOST }}" ]; then
+            echo "Error: PRODUCTION_HOST secret is not set"
+            exit 1
+          fi
+          if [ -z "${{ secrets.PRODUCTION_USERNAME }}" ]; then
+            echo "Error: PRODUCTION_USERNAME secret is not set"
+            exit 1
+          fi
+          if [ -z "${{ secrets.PRODUCTION_SSH_KEY }}" ]; then
+            echo "Error: PRODUCTION_SSH_KEY secret is not set"
+            exit 1
+          fi
+          echo "All SSH secrets are configured"
+
       - name: Deploy to production server
-        uses: appleboy/ssh-action@master
+        uses: appleboy/ssh-action@v1.0.3
         with:
           host: ${{ secrets.PRODUCTION_HOST }}
           username: ${{ secrets.PRODUCTION_USERNAME }}
           key: ${{ secrets.PRODUCTION_SSH_KEY }}
+          port: ${{ secrets.PRODUCTION_SSH_PORT || 22 }}
+          timeout: 30s
           script: |
             cd /root/project-core
             docker-compose pull
