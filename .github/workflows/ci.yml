@@ -45,22 +45,28 @@ jobs:
         with:
           node-version: '18'
           cache: 'npm'
+          cache-dependency-path: apps/core/package-lock.json
 
       - name: Install dependencies
+        working-directory: apps/core
         run: npm ci
 
       - name: Run linter
+        working-directory: apps/core
         run: npm run lint
 
       - name: Generate Prisma Client
+        working-directory: apps/core
         run: npx prisma generate
 
       - name: Run database migrations
+        working-directory: apps/core
         run: npx prisma migrate deploy
         env:
           DATABASE_URL: postgresql://moramor:moramor123@localhost:5432/moramor_test?schema=public
 
       - name: Run tests
+        working-directory: apps/core
         run: npm test
         env:
           DATABASE_URL: postgresql://moramor:moramor123@localhost:5432/moramor_test?schema=public
@@ -68,6 +74,7 @@ jobs:
           JWT_REFRESH_SECRET: test-refresh-secret-key
 
       - name: Run test coverage
+        working-directory: apps/core
         run: npm run test:cov
         env:
           DATABASE_URL: postgresql://moramor:moramor123@localhost:5432/moramor_test?schema=public
@@ -75,7 +82,7 @@ jobs:
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@v3
         with:
-          files: ./coverage/lcov.info
+          files: apps/core/coverage/lcov.info
           flags: unittests
           name: codecov-umbrella
 
@@ -93,6 +100,7 @@ jobs:
         uses: docker/setup-buildx-action@v2
 
       - name: Login to Docker Hub
+        if: secrets.DOCKER_USERNAME != '' && secrets.DOCKER_PASSWORD != ''
         uses: docker/login-action@v2
         with:
           username: ${{ secrets.DOCKER_USERNAME }}
@@ -101,13 +109,14 @@ jobs:
       - name: Build and push
         uses: docker/build-push-action@v4
         with:
-          context: .
-          push: true
+          context: apps/core
+          file: apps/core/Dockerfile
+          push: ${{ secrets.DOCKER_USERNAME != '' && secrets.DOCKER_PASSWORD != '' }}
           tags: |
             ${{ secrets.DOCKER_USERNAME }}/moramor-backend:latest
             ${{ secrets.DOCKER_USERNAME }}/moramor-backend:${{ github.sha }}
-          cache-from: type=registry,ref=${{ secrets.DOCKER_USERNAME }}/moramor-backend:buildcache
-          cache-to: type=registry,ref=${{ secrets.DOCKER_USERNAME }}/moramor-backend:buildcache,mode=max
+          cache-from: ${{ secrets.DOCKER_USERNAME != '' && format('type=registry,ref={0}/moramor-backend:buildcache', secrets.DOCKER_USERNAME) || '' }}
+          cache-to: ${{ secrets.DOCKER_USERNAME != '' && format('type=registry,ref={0}/moramor-backend:buildcache,mode=max', secrets.DOCKER_USERNAME) || '' }}
 
   deploy-staging:
     name: Deploy to Staging
