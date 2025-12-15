@@ -451,6 +451,16 @@ export class AuthService {
   }
 
   private async generateTokens(userId: string, email: string, role: string) {
+    const jwtSecret = this.configService.get<string>('JWT_SECRET');
+    const jwtRefreshSecret = this.configService.get<string>('JWT_REFRESH_SECRET');
+
+    if (!jwtSecret || !jwtRefreshSecret) {
+      this.logger.error(
+        'JWT secrets are not configured. Please set JWT_SECRET and JWT_REFRESH_SECRET in your .env file.',
+      );
+      throw new BadRequestException('خطای پیکربندی سرور. لطفاً با پشتیبانی تماس بگیرید.');
+    }
+
     const payload: JwtPayload = {
       sub: userId,
       email,
@@ -459,11 +469,11 @@ export class AuthService {
 
     const [accessToken, refreshToken] = await Promise.all([
       this.jwtService.signAsync(payload, {
-        secret: this.configService.get<string>('JWT_SECRET'),
+        secret: jwtSecret,
         expiresIn: this.configService.get<string>('JWT_ACCESS_EXPIRATION', '15m'),
       }),
       this.jwtService.signAsync(payload, {
-        secret: this.configService.get<string>('JWT_REFRESH_SECRET'),
+        secret: jwtRefreshSecret,
         expiresIn: this.configService.get<string>('JWT_REFRESH_EXPIRATION', '7d'),
       }),
     ]);

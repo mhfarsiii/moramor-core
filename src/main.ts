@@ -38,14 +38,50 @@ async function bootstrap() {
   );
   app.use(compression());
 
-  // CORS - Enhanced configuration for development
+  // CORS - Enhanced configuration for development and production
+  const isDevelopment = configService.get('NODE_ENV') === 'development';
   const corsOrigin = configService.get('CORS_ORIGIN');
+
+  // In development, allow all localhost origins for flexibility
+  let allowedOrigins: string[] | boolean = true;
+  if (!isDevelopment && corsOrigin) {
+    if (corsOrigin === '*') {
+      allowedOrigins = true;
+    } else {
+      allowedOrigins = corsOrigin.split(',').map((origin) => origin.trim());
+    }
+  } else if (isDevelopment) {
+    // In development, allow common localhost ports
+    allowedOrigins = [
+      'http://localhost:3000',
+      'http://localhost:3001',
+      'http://localhost:5173', // Vite default
+      'http://localhost:5174',
+      'http://localhost:8080',
+      'http://localhost:4200', // Angular default
+      'http://127.0.0.1:3000',
+      'http://127.0.0.1:3001',
+      'http://127.0.0.1:5173',
+      ...(corsOrigin ? corsOrigin.split(',').map((origin) => origin.trim()) : []),
+    ];
+  }
+
   app.enableCors({
-    origin: corsOrigin === '*' ? true : corsOrigin?.split(',') || true,
+    origin: allowedOrigins,
     credentials: true,
-    methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization', 'Accept'],
-    exposedHeaders: ['Authorization'],
+    methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS', 'HEAD'],
+    allowedHeaders: [
+      'Content-Type',
+      'Authorization',
+      'Accept',
+      'X-Requested-With',
+      'Origin',
+      'Access-Control-Request-Method',
+      'Access-Control-Request-Headers',
+    ],
+    exposedHeaders: ['Authorization', 'Content-Length', 'X-Foo', 'X-Bar'],
+    preflightContinue: false,
+    optionsSuccessStatus: 204,
   });
 
   // Validation
