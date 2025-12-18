@@ -120,10 +120,8 @@ export class AuthService {
       throw new UnauthorizedException('حساب کاربری شما غیرفعال شده است');
     }
 
-    // Check if email is verified
-    if (!user.emailVerified) {
-      throw new UnauthorizedException('لطفاً ابتدا ایمیل خود را تأیید کنید');
-    }
+    // Email verification is optional - users can login with correct email/password
+    // or with Google OAuth regardless of email verification status
 
     // Generate tokens
     const tokens = await this.generateTokens(user.id, user.email, user.role);
@@ -230,12 +228,20 @@ export class AuthService {
         },
       });
     } else if (!user.googleId) {
-      // Link Google account to existing user
+      // Link Google account to existing user (if user registered with email/password first)
       user = await this.prisma.user.update({
         where: { id: user.id },
         data: { googleId },
       });
     }
+
+    // Check if user is active
+    if (!user.isActive) {
+      throw new UnauthorizedException('حساب کاربری شما غیرفعال شده است');
+    }
+
+    // Email verification is optional - users can login with Google OAuth
+    // regardless of email verification status
 
     // Generate tokens
     const tokens = await this.generateTokens(user.id, user.email, user.role);
