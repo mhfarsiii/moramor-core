@@ -32,9 +32,12 @@ export class AuthService {
   async register(registerDto: RegisterDto) {
     const { email, password, name, phone } = registerDto;
 
+    // Normalize email to lowercase for consistency
+    const normalizedEmail = email.toLowerCase().trim();
+
     // Check if user exists
     const existingUser = await this.prisma.user.findUnique({
-      where: { email },
+      where: { email: normalizedEmail },
     });
 
     if (existingUser) {
@@ -49,7 +52,7 @@ export class AuthService {
       // Create user
       const user = await tx.user.create({
         data: {
-          email,
+          email: normalizedEmail,
           password: hashedPassword,
           name,
           phone,
@@ -99,12 +102,23 @@ export class AuthService {
   async login(loginDto: LoginDto) {
     const { email, password } = loginDto;
 
+    // Normalize email to lowercase for consistency
+    const normalizedEmail = email.toLowerCase().trim();
+
+    this.logger.debug(`Attempting login for email: ${normalizedEmail}`);
+
     // Find user
     const user = await this.prisma.user.findUnique({
-      where: { email },
+      where: { email: normalizedEmail },
     });
 
-    if (!user || !user.password) {
+    if (!user) {
+      this.logger.warn(`Login failed: User not found for email: ${normalizedEmail}`);
+      throw new UnauthorizedException('ایمیل یا رمز عبور اشتباه است');
+    }
+
+    if (!user.password) {
+      this.logger.warn(`Login failed: User ${normalizedEmail} has no password (OAuth only)`);
       throw new UnauthorizedException('ایمیل یا رمز عبور اشتباه است');
     }
 
@@ -112,18 +126,19 @@ export class AuthService {
     const isPasswordValid = await bcrypt.compare(password, user.password);
 
     if (!isPasswordValid) {
+      this.logger.warn(`Login failed: Invalid password for email: ${normalizedEmail}`);
       throw new UnauthorizedException('ایمیل یا رمز عبور اشتباه است');
     }
+
+    this.logger.log(`Login successful for user: ${normalizedEmail}`);
 
     // Check if user is active
     if (!user.isActive) {
       throw new UnauthorizedException('حساب کاربری شما غیرفعال شده است');
     }
 
-    // Check if email is verified
-    if (!user.emailVerified) {
-      throw new UnauthorizedException('لطفاً ابتدا ایمیل خود را تأیید کنید');
-    }
+    // Email verification is optional - users can login with correct email/password
+    // or with Google OAuth regardless of email verification status
 
     // Generate tokens
     const tokens = await this.generateTokens(user.id, user.email, user.role);
@@ -215,27 +230,38 @@ export class AuthService {
   async googleLogin(profile: any) {
     const { email, displayName, id: googleId } = profile;
 
+    // Normalize email to lowercase for consistency
+    const normalizedEmail = email.toLowerCase().trim();
+
     // Find or create user
     let user = await this.prisma.user.findUnique({
-      where: { email },
+      where: { email: normalizedEmail },
     });
 
     if (!user) {
       user = await this.prisma.user.create({
         data: {
-          email,
+          email: normalizedEmail,
           name: displayName,
           googleId,
           emailVerified: true,
         },
       });
     } else if (!user.googleId) {
-      // Link Google account to existing user
+      // Link Google account to existing user (if user registered with email/password first)
       user = await this.prisma.user.update({
         where: { id: user.id },
         data: { googleId },
       });
     }
+
+    // Check if user is active
+    if (!user.isActive) {
+      throw new UnauthorizedException('حساب کاربری شما غیرفعال شده است');
+    }
+
+    // Email verification is optional - users can login with Google OAuth
+    // regardless of email verification status
 
     // Generate tokens
     const tokens = await this.generateTokens(user.id, user.email, user.role);
@@ -258,22 +284,25 @@ export class AuthService {
   async forgotPassword(forgotPasswordDto: ForgotPasswordDto) {
     const { email } = forgotPasswordDto;
 
+    // Normalize email to lowercase for consistency
+    const normalizedEmail = email.toLowerCase().trim();
+
     try {
       // Check if user exists
       const user = await this.prisma.user.findUnique({
-        where: { email },
+        where: { email: normalizedEmail },
       });
 
       // For security, always return success message
       // This prevents email enumeration attacks
       if (!user) {
-        this.logger.warn(`Password reset requested for non-existent email: ${email}`);
+        this.logger.warn(`Password reset requested for non-existent email: ${normalizedEmail}`);
         return { message: 'اگر ایمیل در سیستم موجود باشد، لینک بازیابی ارسال شد' };
       }
 
       // Check if user has password (not OAuth only)
       if (!user.password) {
-        this.logger.warn(`Password reset requested for OAuth-only user: ${email}`);
+        this.logger.warn(`Password reset requested for OAuth-only user: ${normalizedEmail}`);
         return { message: 'اگر ایمیل در سیستم موجود باشد، لینک بازیابی ارسال شد' };
       }
 
