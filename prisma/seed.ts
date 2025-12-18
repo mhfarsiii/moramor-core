@@ -7,21 +7,38 @@ async function main() {
   console.log('🌱 Starting database seeding...');
 
   // Create admin user
-  const hashedPassword = await bcrypt.hash(process.env.ADMIN_PASSWORD || 'Admin@123456', 12);
+  const adminEmail = process.env.ADMIN_EMAIL || 'admin@moramor.com';
+  const adminPassword = process.env.ADMIN_PASSWORD || 'Admin@123456';
+  const adminName = process.env.ADMIN_NAME || 'Administrator';
+  
+  const hashedPassword = await bcrypt.hash(adminPassword, 12);
 
   const admin = await prisma.user.upsert({
-    where: { email: process.env.ADMIN_EMAIL || 'admin@moramor.com' },
-    update: {},
-    create: {
-      email: process.env.ADMIN_EMAIL || 'admin@moramor.com',
+    where: { email: adminEmail },
+    update: {
       password: hashedPassword,
-      name: process.env.ADMIN_NAME || 'Administrator',
+      name: adminName,
       role: UserRole.SUPER_ADMIN,
       emailVerified: true,
+      isActive: true,
+    },
+    create: {
+      email: adminEmail,
+      password: hashedPassword,
+      name: adminName,
+      role: UserRole.SUPER_ADMIN,
+      emailVerified: true,
+      isActive: true,
     },
   });
 
-  console.log('✅ Admin user created:', admin.email);
+  console.log('✅ Admin user created/updated:');
+  console.log(`   Email: ${admin.email}`);
+  console.log(`   Name: ${admin.name}`);
+  console.log(`   Role: ${admin.role}`);
+  console.log(`   Email Verified: ${admin.emailVerified}`);
+  console.log(`   Is Active: ${admin.isActive}`);
+  console.log(`   Password: ${adminPassword} (hashed)`);
 
   // Create categories
   const categories = await Promise.all([
