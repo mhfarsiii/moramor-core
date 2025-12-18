@@ -33,29 +33,43 @@ import { HealthController } from './health/health.controller';
     }),
 
     // Rate Limiting
-    ThrottlerModule.forRoot([
-      {
-        ttl: parseInt(process.env.THROTTLE_TTL || '60', 10) * 1000,
-        limit: parseInt(process.env.THROTTLE_LIMIT || '10', 1000),
-      },
-    ]),
+    ThrottlerModule.forRootAsync({
+      imports: [ConfigModule],
+      useFactory: async (configService: ConfigService) => [
+        {
+          ttl: configService.get<number>('THROTTLE_TTL', 60) * 1000,
+          limit: configService.get<number>('THROTTLE_LIMIT', 10),
+        },
+      ],
+      inject: [ConfigService],
+    }),
 
     // Email Configuration
     MailerModule.forRootAsync({
       imports: [ConfigModule],
       useFactory: async (configService: ConfigService) => {
+        const mailHost = configService.get<string>('MAIL_HOST', 'smtp.gmail.com');
+        const mailPort = configService.get<number>('MAIL_PORT', 587);
         const mailUser = configService.get<string>('MAIL_USER');
         const mailPass = configService.get<string>('MAIL_PASS');
+        const mailFromAddress = configService.get<string>(
+          'MAIL_FROM_ADDRESS',
+          mailUser || 'noreply@moramor.com',
+        );
+        const mailFromName = configService.get<string>('MAIL_FROM_NAME', 'Moramor Store');
 
         // Determine template directory path - works in both dev and production
         // Use project root to find src/templates, which works regardless of where code is running from
         const templateDir = join(process.cwd(), 'src', 'templates');
 
+        // Set secure to true for port 465 (SSL/TLS), false for other ports (STARTTLS)
+        const isSecure = mailPort === 465;
+
         return {
           transport: {
-            host: configService.get<string>('MAIL_HOST', 'smtp.gmail.com'),
-            port: configService.get<number>('MAIL_PORT', 587),
-            secure: false, // true for 465, false for other ports
+            host: mailHost,
+            port: mailPort,
+            secure: isSecure,
             connectionTimeout: 10000, // 10 seconds connection timeout
             greetingTimeout: 10000, // 10 seconds greeting timeout
             socketTimeout: 10000, // 10 seconds socket timeout
@@ -68,9 +82,9 @@ import { HealthController } from './health/health.controller';
               }),
           },
           defaults: {
-            from: mailUser
-              ? `"${configService.get<string>('MAIL_FROM_NAME', 'Moramor Store')}" <${mailUser}>`
-              : `"${configService.get<string>('MAIL_FROM_NAME', 'Moramor Store')}" <noreply@moramor.com>`,
+            from: mailFromAddress
+              ? `"${mailFromName}" <${mailFromAddress}>`
+              : `"${mailFromName}" <noreply@moramor.com>`,
           },
           template: {
             dir: templateDir,

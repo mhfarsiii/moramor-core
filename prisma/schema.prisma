@@ -33,7 +33,7 @@ model User {
   cart          Cart?
   refreshTokens RefreshToken[]
   passwordResetTokens PasswordResetToken[]
-  emailVerificationTokens EmailVerificationToken[]
+  otpCodes OtpCode[]
 
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
@@ -69,17 +69,19 @@ model PasswordResetToken {
   @@map("password_reset_tokens")
 }
 
-model EmailVerificationToken {
+model OtpCode {
   id        String   @id @default(cuid())
-  token     String   @unique
-  userId    String
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  email     String
+  code      String   // 6-digit code
+  userId    String?  // Nullable for new users
+  user      User?    @relation(fields: [userId], references: [id], onDelete: Cascade)
   expiresAt DateTime
   createdAt DateTime @default(now())
 
+  @@index([email])
+  @@index([code])
   @@index([userId])
-  @@index([token])
-  @@map("email_verification_tokens")
+  @@map("otp_codes")
 }
 
 enum UserRole {
