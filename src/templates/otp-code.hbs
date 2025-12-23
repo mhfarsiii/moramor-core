@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html dir="rtl" lang="fa">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>کد تأیید ورود - {{companyName}}</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Tahoma', 'Arial', sans-serif;
+            direction: rtl;
+            background-color: #f8f9fa;
+            color: #333;
+            line-height: 1.6;
+        }
+
+        .container {
+            max-width: 600px;
+            margin: 0 auto;
+            background-color: #ffffff;
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 30px 20px;
+            text-align: center;
+        }
+
+        .header h1 {
+            font-size: 28px;
+            margin-bottom: 10px;
+            font-weight: bold;
+        }
+
+        .header p {
+            font-size: 16px;
+            opacity: 0.9;
+        }
+
+        .content {
+            padding: 40px 30px;
+        }
+
+        .greeting {
+            font-size: 20px;
+            color: #2c3e50;
+            margin-bottom: 20px;
+            font-weight: 600;
+        }
+
+        .message {
+            font-size: 16px;
+            color: #555;
+            margin-bottom: 30px;
+            line-height: 1.8;
+        }
+
+        .code-container {
+            text-align: center;
+            margin: 30px 0;
+        }
+
+        .code-box {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 25px;
+            border-radius: 12px;
+            display: inline-block;
+            font-size: 36px;
+            font-weight: bold;
+            letter-spacing: 8px;
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+            font-family: 'Courier New', monospace;
+        }
+
+        .info {
+            background-color: #e3f2fd;
+            border-left: 4px solid #2196f3;
+            padding: 15px;
+            margin: 20px 0;
+            color: #1565c0;
+            border-radius: 4px;
+        }
+
+        .warning {
+            background-color: #fff3cd;
+            border: 1px solid #ffeaa7;
+            border-radius: 6px;
+            padding: 15px;
+            margin: 20px 0;
+            color: #856404;
+        }
+
+        .warning-title {
+            font-weight: 600;
+            margin-bottom: 8px;
+        }
+
+        .footer {
+            background-color: #f8f9fa;
+            padding: 20px 30px;
+            border-top: 1px solid #e9ecef;
+            text-align: center;
+            font-size: 14px;
+            color: #6c757d;
+        }
+
+        @media (max-width: 600px) {
+            .container {
+                margin: 10px;
+                border-radius: 0;
+            }
+
+            .content {
+                padding: 20px;
+            }
+
+            .header {
+                padding: 20px;
+            }
+
+            .header h1 {
+                font-size: 24px;
+            }
+
+            .code-box {
+                font-size: 28px;
+                letter-spacing: 4px;
+                padding: 20px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>{{companyName}}</h1>
+            <p>کد تأیید ورود</p>
+        </div>
+
+        <div class="content">
+            <div class="greeting">سلام {{userName}} عزیز،</div>
+
+            <div class="message">
+                برای ورود به حساب کاربری خود، لطفاً کد تأیید زیر را در صفحه ورود وارد کنید:
+            </div>
+
+            <div class="code-container">
+                <div class="code-box">{{code}}</div>
+            </div>
+
+            <div class="info">
+                <strong>توجه:</strong> این کد تا ۵ دقیقه معتبر است و پس از آن منقضی خواهد شد.
+            </div>
+
+            <div class="warning">
+                <div class="warning-title">⚠️ امنیت</div>
+                اگر شما این درخواست را نداده‌اید، این ایمیل را نادیده بگیرید. کد تأیید شما به کسی داده نخواهد شد.
+            </div>
+        </div>
+
+        <div class="footer">
+            <p>این ایمیل به صورت خودکار ارسال شده است. لطفاً پاسخ ندهید.</p>
+            <p>&copy; ۲۰۲۴ {{companyName}}. تمامی حقوق محفوظ است.</p>
+        </div>
+    </div>
+</body>
+</html>
+

@@ -1,15 +1,15 @@
 import { Controller, Post, Body, Get, UseGuards, Req, Res } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from '@nestjs/swagger';
+import { Throttle } from '@nestjs/throttler';
 import { AuthGuard } from '@nestjs/passport';
 import { Response } from 'express';
 import { ConfigService } from '@nestjs/config';
 import { AuthService } from './auth.service';
-import { RegisterDto } from './dto/register.dto';
-import { LoginDto } from './dto/login.dto';
 import { RefreshTokenDto } from './dto/refresh-token.dto';
 import { ForgotPasswordDto } from './dto/forgot-password.dto';
 import { ResetPasswordDto } from './dto/reset-password.dto';
-import { VerifyEmailDto } from './dto/verify-email.dto';
+import { SendCodeDto } from './dto/send-code.dto';
+import { VerifyCodeDto } from './dto/verify-code.dto';
 import { Public } from '../../common/decorators/public.decorator';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 
@@ -20,24 +20,6 @@ export class AuthController {
     private readonly authService: AuthService,
     private readonly configService: ConfigService,
   ) {}
-
-  @Public()
-  @Post('register')
-  @ApiOperation({ summary: 'ثبت‌نام کاربر جدید' })
-  @ApiResponse({ status: 201, description: 'کاربر با موفقیت ثبت‌نام شد' })
-  @ApiResponse({ status: 409, description: 'کاربر با این ایمیل قبلاً ثبت‌نام کرده است' })
-  async register(@Body() registerDto: RegisterDto) {
-    return this.authService.register(registerDto);
-  }
-
-  @Public()
-  @Post('login')
-  @ApiOperation({ summary: 'ورود کاربر' })
-  @ApiResponse({ status: 200, description: 'ورود موفقیت‌آمیز' })
-  @ApiResponse({ status: 401, description: 'ایمیل یا رمز عبور اشتباه است' })
-  async login(@Body() loginDto: LoginDto) {
-    return this.authService.login(loginDto);
-  }
 
   @Public()
   @Post('refresh')
@@ -157,33 +139,85 @@ export class AuthController {
   }
 
   @Public()
-  @Post('verify-email')
+  @Post('send-code')
+  @Throttle({ default: { limit: 3, ttl: 60000 } }) // 3 requests per minute for sending codes
   @ApiOperation({
-    summary: 'تأیید ایمیل کاربر',
-    description: 'تأیید ایمیل کاربر با استفاده از توکن دریافتی از ایمیل',
+    summary: 'ارسال کد تأیید OTP',
+    description:
+      'ارسال کد ۶ رقمی به ایمیل برای ورود/ثبت‌نام یکپارچه. اگر کاربر وجود نداشته باشد، به صورت خودکار ایجاد می‌شود.',
   })
   @ApiResponse({
     status: 200,
-    description: 'ایمیل با موفقیت تأیید شد',
+    description: 'کد تأیید با موفقیت ارسال شد',
     schema: {
       type: 'object',
       properties: {
         message: {
           type: 'string',
-          example: 'ایمیل شما با موفقیت تأیید شد',
+          example: 'کد تأیید به ایمیل شما ارسال شد',
         },
       },
     },
   })
   @ApiResponse({
     status: 400,
-    description: 'توکن نامعتبر یا منقضی شده است',
+    description: 'ایمیل نامعتبر است',
   })
   @ApiResponse({
-    status: 404,
-    description: 'توکن تأیید یافت نشد',
+    status: 429,
+    description: 'تعداد درخواست بیش از حد مجاز',
   })
-  async verifyEmail(@Body() verifyEmailDto: VerifyEmailDto) {
-    return this.authService.verifyEmail(verifyEmailDto);
+  async sendCode(@Body() sendCodeDto: SendCodeDto) {
+    return this.authService.sendOtpCode(sendCodeDto);
+  }
+
+  @Public()
+  @Post('verify-code')
+  @Throttle({ default: { limit: 10, ttl: 60000 } }) // 10 requests per minute for verification
+  @ApiOperation({
+    summary: 'تأیید کد OTP و ورود',
+    description:
+      'تأیید کد ۶ رقمی و دریافت توکن‌های دسترسی. در صورت موفقیت، کاربر و توکن‌ها برگردانده می‌شوند.',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'کد تأیید شد و کاربر احراز هویت شد',
+    schema: {
+      type: 'object',
+      properties: {
+        user: {
+          type: 'object',
+          description: 'اطلاعات کاربر',
+        },
+        accessToken: {
+          type: 'string',
+          description: 'JWT Access Token',
+        },
+        refreshToken: {
+          type: 'string',
+          description: 'JWT Refresh Token',
+        },
+        isNewUser: {
+          type: 'boolean',
+          description: 'آیا کاربر جدید است یا خیر',
+          example: false,
+        },
+      },
+    },
+  })
+  @ApiResponse({
+    status: 400,
+    description: 'کد تأیید نامعتبر یا منقضی شده است',
+  })
+  @ApiResponse({
+    status: 401,
+    description: 'حساب کاربری غیرفعال است',
+  })
+  @ApiResponse({
+    status: 429,
+    description: 'تعداد درخواست بیش از حد مجاز',
+  })
+  async verifyCode(@Body() verifyCodeDto: VerifyCodeDto) {
+    return this.authService.verifyOtpCode(verifyCodeDto);
   }
 }

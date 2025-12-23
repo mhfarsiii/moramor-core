@@ -1,20 +1,13 @@
-import {
-  Injectable,
-  UnauthorizedException,
-  ConflictException,
-  BadRequestException,
-  Logger,
-} from '@nestjs/common';
+import { Injectable, UnauthorizedException, BadRequestException, Logger } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
-import * as bcrypt from 'bcrypt';
 import { randomBytes } from 'crypto';
+import * as bcrypt from 'bcrypt';
 import { PrismaService } from '../../common/prisma/prisma.service';
-import { RegisterDto } from './dto/register.dto';
-import { LoginDto } from './dto/login.dto';
 import { ForgotPasswordDto } from './dto/forgot-password.dto';
 import { ResetPasswordDto } from './dto/reset-password.dto';
-import { VerifyEmailDto } from './dto/verify-email.dto';
+import { SendCodeDto } from './dto/send-code.dto';
+import { VerifyCodeDto } from './dto/verify-code.dto';
 import { JwtPayload } from '../../common/interfaces/jwt-payload.interface';
 import { MailService } from './mail.service';
 
@@ -28,134 +21,6 @@ export class AuthService {
     private configService: ConfigService,
     private mailService: MailService,
   ) {}
-
-  async register(registerDto: RegisterDto) {
-    const { email, password, name, phone } = registerDto;
-
-    // Normalize email to lowercase for consistency
-    const normalizedEmail = email.toLowerCase().trim();
-
-    // Check if user exists
-    const existingUser = await this.prisma.user.findUnique({
-      where: { email: normalizedEmail },
-    });
-
-    if (existingUser) {
-      throw new ConflictException('کاربر با این ایمیل قبلاً ثبت‌نام کرده است');
-    }
-
-    // Hash password
-    const hashedPassword = await bcrypt.hash(password, 12);
-
-    // Create user and send verification email in a transaction
-    const result = await this.prisma.$transaction(async (tx) => {
-      // Create user
-      const user = await tx.user.create({
-        data: {
-          email: normalizedEmail,
-          password: hashedPassword,
-          name,
-          phone,
-          emailVerified: false, // Explicitly set to false
-        },
-      });
-
-      // Generate verification token
-      const verificationToken = randomBytes(32).toString('hex');
-      const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours
-
-      // Store verification token
-      // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-      // @ts-ignore
-      await tx.emailVerificationToken.create({
-        data: {
-          token: verificationToken,
-          userId: user.id,
-          expiresAt,
-        },
-      });
-
-      return { user, verificationToken };
-    });
-
-    // Send verification email
-    await this.mailService.sendEmailVerificationEmail(
-      result.user.email,
-      result.verificationToken,
-      result.user.name,
-    );
-
-    this.logger.log(
-      `Registration successful for user: ${result.user.email}, verification email sent`,
-    );
-
-    // Remove password from response
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    const { password: _, ...userWithoutPassword } = result.user;
-
-    return {
-      message: 'ثبت‌نام با موفقیت انجام شد. لطفاً ایمیل خود را برای تأیید بررسی کنید',
-      user: userWithoutPassword,
-    };
-  }
-
-  async login(loginDto: LoginDto) {
-    const { email, password } = loginDto;
-
-    // Normalize email to lowercase for consistency
-    const normalizedEmail = email.toLowerCase().trim();
-
-    this.logger.debug(`Attempting login for email: ${normalizedEmail}`);
-
-    // Find user
-    const user = await this.prisma.user.findUnique({
-      where: { email: normalizedEmail },
-    });
-
-    if (!user) {
-      this.logger.warn(`Login failed: User not found for email: ${normalizedEmail}`);
-      throw new UnauthorizedException('ایمیل یا رمز عبور اشتباه است');
-    }
-
-    if (!user.password) {
-      this.logger.warn(`Login failed: User ${normalizedEmail} has no password (OAuth only)`);
-      throw new UnauthorizedException('ایمیل یا رمز عبور اشتباه است');
-    }
-
-    // Verify password
-    const isPasswordValid = await bcrypt.compare(password, user.password);
-
-    if (!isPasswordValid) {
-      this.logger.warn(`Login failed: Invalid password for email: ${normalizedEmail}`);
-      throw new UnauthorizedException('ایمیل یا رمز عبور اشتباه است');
-    }
-
-    this.logger.log(`Login successful for user: ${normalizedEmail}`);
-
-    // Check if user is active
-    if (!user.isActive) {
-      throw new UnauthorizedException('حساب کاربری شما غیرفعال شده است');
-    }
-
-    // Email verification is optional - users can login with correct email/password
-    // or with Google OAuth regardless of email verification status
-
-    // Generate tokens
-    const tokens = await this.generateTokens(user.id, user.email, user.role);
-
-    // Store refresh token
-    await this.storeRefreshToken(user.id, tokens.refreshToken);
-
-    // Remove password from response
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    const { password: _, ...userWithoutPassword } = user;
-
-    return {
-      user: userWithoutPassword,
-      ...tokens,
-    };
-  }
 
   async refreshTokens(refreshToken: string) {
     try {
@@ -404,78 +269,183 @@ export class AuthService {
   }
 
   /**
-   * Handle email verification with token
-   * @param verifyEmailDto - Contains verification token
+   * Send OTP code to email for unified sign-in/sign-up
+   * @param sendCodeDto - Contains email address
    * @returns Promise with success message
    */
-  async verifyEmail(verifyEmailDto: VerifyEmailDto) {
-    const { token } = verifyEmailDto;
+  async sendOtpCode(sendCodeDto: SendCodeDto) {
+    const { email } = sendCodeDto;
+
+    // Normalize email to lowercase for consistency
+    const normalizedEmail = email.toLowerCase().trim();
 
     try {
-      // Find verification token
-      // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-      // @ts-ignore
-      const verificationToken = await this.prisma.emailVerificationToken.findUnique({
-        where: { token },
-        include: { user: true },
+      // Check if user exists
+      let user = await this.prisma.user.findUnique({
+        where: { email: normalizedEmail },
       });
 
-      if (!verificationToken) {
-        throw new BadRequestException('توکن تأیید نامعتبر است');
+      // If user doesn't exist, create a new user with isActive: true and emailVerified: false
+      if (!user) {
+        user = await this.prisma.user.create({
+          data: {
+            email: normalizedEmail,
+            name: normalizedEmail.split('@')[0], // Use email prefix as default name
+            isActive: true,
+            emailVerified: false,
+          },
+        });
+        this.logger.log(`New user created for OTP flow: ${normalizedEmail}`);
       }
 
-      // Check if token is expired
-      if (new Date() > verificationToken.expiresAt) {
-        // Clean up expired token
+      // Delete any existing OTP codes for this email
+      // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+      // @ts-ignore
+      await this.prisma.otpCode.deleteMany({
+        where: { email: normalizedEmail },
+      });
+
+      // Generate 6-digit random code
+      const code = Math.floor(100000 + Math.random() * 900000).toString();
+
+      // Store code with 5-minute expiration
+      const expiresAt = new Date(Date.now() + 5 * 60 * 1000); // 5 minutes
+
+      // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+      // @ts-ignore
+      await this.prisma.otpCode.create({
+        data: {
+          email: normalizedEmail,
+          code,
+          userId: user.id,
+          expiresAt,
+        },
+      });
+
+      // Send OTP code via email
+      await this.mailService.sendOtpEmail(normalizedEmail, code, user.name);
+
+      this.logger.log(`OTP code sent to: ${normalizedEmail}`);
+
+      // Return consistent response for both new and returning users
+      return {
+        message: 'کد تأیید به ایمیل شما ارسال شد',
+      };
+    } catch (error) {
+      this.logger.error(`Failed to send OTP code to ${normalizedEmail}:`, error);
+      throw new BadRequestException('خطا در ارسال کد تأیید. لطفاً دوباره تلاش کنید');
+    }
+  }
+
+  /**
+   * Verify OTP code and authenticate user
+   * @param verifyCodeDto - Contains email and code
+   * @returns Promise with user data, tokens, and isNewUser flag
+   */
+  async verifyOtpCode(verifyCodeDto: VerifyCodeDto) {
+    const { email, code } = verifyCodeDto;
+
+    // Normalize email to lowercase for consistency
+    const normalizedEmail = email.toLowerCase().trim();
+
+    try {
+      // Find OTP code
+      // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+      // @ts-ignore
+      const otpCode = await this.prisma.otpCode.findFirst({
+        where: {
+          email: normalizedEmail,
+          code,
+        },
+        orderBy: {
+          createdAt: 'desc',
+        },
+      });
+
+      if (!otpCode) {
+        throw new BadRequestException('کد تأیید نامعتبر است');
+      }
+
+      // Check if code is expired
+      if (new Date() > otpCode.expiresAt) {
+        // Clean up expired code
         // eslint-disable-next-line @typescript-eslint/ban-ts-comment
         // @ts-ignore
-        await this.prisma.emailVerificationToken.delete({
-          where: { id: verificationToken.id },
+        await this.prisma.otpCode.delete({
+          where: { id: otpCode.id },
         });
-        throw new BadRequestException('توکن تأیید منقضی شده است');
+        throw new BadRequestException('کد تأیید منقضی شده است');
       }
 
-      // Check if user still exists and is active
-      if (!verificationToken.user.isActive) {
-        throw new BadRequestException('حساب کاربری غیرفعال است');
+      // Find or get user
+      const user = await this.prisma.user.findUnique({
+        where: { email: normalizedEmail },
+      });
+
+      if (!user) {
+        throw new BadRequestException('کاربر یافت نشد');
       }
 
-      // Check if email is already verified
-      if (verificationToken.user.emailVerified) {
-        // Clean up token since it's no longer needed
-        // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-        // @ts-ignore
-        await this.prisma.emailVerificationToken.delete({
-          where: { id: verificationToken.id },
-        });
-        throw new BadRequestException('ایمیل قبلاً تأیید شده است');
+      // Check if user is active
+      if (!user.isActive) {
+        throw new UnauthorizedException('حساب کاربری شما غیرفعال شده است');
       }
 
-      // Update user email verification status and clean up token in a transaction
+      const isNewUser = !user.emailVerified;
+
+      // Update email verification status and clean up OTP code in a transaction
       await this.prisma.$transaction(async (tx) => {
-        // Update email verification status
+        // Set emailVerified to true
         await tx.user.update({
-          where: { id: verificationToken.userId },
+          where: { id: user.id },
           data: { emailVerified: true },
         });
 
-        // Delete verification token
+        // Delete OTP code
         // eslint-disable-next-line @typescript-eslint/ban-ts-comment
         // @ts-ignore
-        await tx.emailVerificationToken.delete({
-          where: { id: verificationToken.id },
+        await tx.otpCode.delete({
+          where: { id: otpCode.id },
+        });
+
+        // Clean up any other expired OTP codes for this email
+        // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+        // @ts-ignore
+        await tx.otpCode.deleteMany({
+          where: {
+            email: normalizedEmail,
+            expiresAt: {
+              lt: new Date(),
+            },
+          },
         });
       });
 
-      this.logger.log(`Email verification successful for user: ${verificationToken.user.email}`);
+      // Generate JWT tokens
+      const tokens = await this.generateTokens(user.id, user.email, user.role);
 
-      return { message: 'ایمیل شما با موفقیت تأیید شد' };
+      // Store refresh token
+      await this.storeRefreshToken(user.id, tokens.refreshToken);
+
+      // Remove password from response
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
+      const { password: _, ...userWithoutPassword } = user;
+
+      this.logger.log(
+        `OTP verification successful for user: ${normalizedEmail}, isNewUser: ${isNewUser}`,
+      );
+
+      return {
+        user: userWithoutPassword,
+        ...tokens,
+        isNewUser,
+      };
     } catch (error) {
-      if (error instanceof BadRequestException) {
+      if (error instanceof BadRequestException || error instanceof UnauthorizedException) {
         throw error;
       }
-      this.logger.error(`Failed to verify email with token ${token}:`, error);
-      throw new BadRequestException('خطا در تأیید ایمیل');
+      this.logger.error(`Failed to verify OTP code for ${normalizedEmail}:`, error);
+      throw new BadRequestException('خطا در تأیید کد. لطفاً دوباره تلاش کنید');
     }
   }
 

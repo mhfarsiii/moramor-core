@@ -81,31 +81,24 @@ export class MailService {
     }
   }
 
+
   /**
-   * Send email verification email
+   * Send OTP code email
    * @param email - User's email address
-   * @param verificationToken - Email verification token
-   * @param userName - User's display name
+   * @param code - 6-digit OTP code
+   * @param userName - User's display name (optional)
    * @returns Promise<void>
    */
-  async sendEmailVerificationEmail(
-    email: string,
-    verificationToken: string,
-    userName: string,
-  ): Promise<void> {
+  async sendOtpEmail(email: string, code: string, userName?: string): Promise<void> {
     try {
-      const frontendUrl = this.configService.get<string>('FRONTEND_URL', 'http://localhost:3000');
-      const verificationUrl = `${frontendUrl}/verify-email?token=${verificationToken}`;
-
       // Add timeout to prevent hanging connections
       const sendMailPromise = this.mailerService.sendMail({
         to: email,
-        subject: 'تأیید ایمیل - فروشگاه مُرامُر',
-        template: 'email-verification',
+        subject: 'کد تأیید ورود - فروشگاه مُرامُر',
+        template: 'otp-code',
         context: {
-          userName,
-          verificationUrl,
-          verificationToken,
+          userName: userName || 'کاربر عزیز',
+          code,
           companyName: 'فروشگاه مُرامُر',
         },
       });
@@ -119,11 +112,10 @@ export class MailService {
 
       await Promise.race([sendMailPromise, timeoutPromise]);
 
-      this.logger.log(`Email verification email sent successfully to ${email}`);
+      this.logger.log(`OTP code email sent successfully to ${email}`);
     } catch (error) {
-      // Log error but don't throw to prevent server crashes
-      this.logger.error(`Failed to send email verification email to ${email}:`, error);
-      // Don't rethrow - let the calling code handle it gracefully
+      this.logger.error(`Failed to send OTP code email to ${email}:`, error);
+      throw error;
     }
   }
 }
