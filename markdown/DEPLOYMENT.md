@@ -353,9 +353,6 @@ cd node_exporter-*
 ### 3. Database Monitoring
 
 ```bash
-# Prisma Studio (development only)
-npx prisma studio
-
 # PostgreSQL monitoring
 sudo apt install postgresql-contrib
 sudo -u postgres psql
@@ -414,7 +411,7 @@ docker-compose logs app
 docker-compose exec app env
 
 # بررسی database connection
-docker-compose exec app npx prisma studio
+docker-compose exec app npx prisma db pull
 ```
 
 ### 2. مشکل در پرداخت

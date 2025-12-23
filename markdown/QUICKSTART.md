@@ -195,14 +195,12 @@ make docker-up      # شروع Docker services
 make docker-down    # توقف Docker services
 make migrate        # اجرای migrations
 make seed           # Seed کردن دیتا
-make studio         # باز کردن Prisma Studio
 make logs           # نمایش logs
 make clean          # پاک کردن build files
 ```
 
 ## 💡 نکات
 
-- **Prisma Studio:** برای مشاهده دیتابیس به صورت گرافیکی: `make studio`
 - **Hot Reload:** تغییرات کد به صورت خودکار اعمال می‌شود
 - **Debugging:** برای debug: `npm run start:debug` و از VS Code debugger استفاده کنید
 

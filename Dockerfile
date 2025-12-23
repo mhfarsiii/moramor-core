@@ -1,56 +1,26 @@
-# Build stage
+# Stage 1: Build
 FROM docker.arvancloud.ir/node:22-alpine AS builder
-
 WORKDIR /app
-
-# Copy package files
+RUN apk add --no-cache openssl libc6-compat
 COPY package*.json ./
-COPY prisma ./prisma/
-
-# Install dependencies
-RUN npm ci
-
-# Copy source files
+# استفاده از آینه آروان برای سرعت بیلد در CI
+RUN npm config set registry https://npm.mirror.arvancloud.ir && \
+    npm ci
 COPY . .
-
-# Generate Prisma Client
 RUN npx prisma generate
-
-# Build application
 RUN npm run build
 
-# Production stage
-FROM node:18-alpine
-
+# Stage 2: Run
+FROM docker.arvancloud.ir/node:22-alpine
 WORKDIR /app
+RUN apk add --no-cache openssl libc6-compat
+ENV NODE_ENV=production
 
-# Install OpenSSL and other dependencies for Prisma
-RUN apk add --no-cache openssl openssl-dev libc6-compat
-
-# Install production dependencies only
-COPY package*.json ./
-COPY prisma ./prisma/
-
-RUN npm ci --only=production && \
-    npx prisma generate && \
-    npm cache clean --force
-
-# Copy built application from builder
+# کپی کردن فقط موارد ضروری از مرحله بیلد
+COPY --from=builder /app/node_modules ./node_modules
 COPY --from=builder /app/dist ./dist
+COPY --from=builder /app/package*.json ./
+COPY --from=builder /app/prisma ./prisma
 
-# Create non-root user
-RUN addgroup -g 1001 -S nodejs && \
-    adduser -S nestjs -u 1001
-
-USER nestjs
-
-# Expose port
 EXPOSE 3000
-
-# Health check
-HEALTHCHECK --interval=30s --timeout=3s --start-period=40s --retries=3 \
-  CMD node -e "require('http').get('http://localhost:3000/health', (r) => {process.exit(r.statusCode === 200 ? 0 : 1)})"
-
-# Start application
 CMD ["node", "dist/main.js"]
-

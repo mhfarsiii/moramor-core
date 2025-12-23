@@ -106,10 +106,6 @@ seed: ## Seed کردن دیتابیس
 	npm run prisma:seed
 	@echo "$(GREEN)✓ Database seeded$(NC)"
 
-studio: ## باز کردن Prisma Studio
-	@echo "$(CYAN)Opening Prisma Studio...$(NC)"
-	npx prisma studio
-
 generate: ## تولید Prisma Client
 	@echo "$(CYAN)Generating Prisma Client...$(NC)"
 	npx prisma generate

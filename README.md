@@ -196,7 +196,6 @@ npm run start:prod       # اجرای build شده
 # Database
 npm run prisma:generate  # تولید Prisma Client
 npm run prisma:migrate   # اجرای migrations
-npm run prisma:studio    # باز کردن Prisma Studio
 npm run prisma:seed      # Seed کردن دیتا
 
 # Testing

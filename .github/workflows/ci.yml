@@ -38,47 +38,34 @@ jobs:
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Setup Node.js
-        uses: actions/setup-node@v3
+        uses: actions/setup-node@v4
         with:
-          node-version: '18'
+          node-version: '22'
           cache: 'npm'
-          cache-dependency-path: package-lock.json
+          cache-dependency-path: apps/core/package-lock.json
 
       - name: Install dependencies
         run: npm ci
+        working-directory: ./apps/core
 
       - name: Run linter
         run: npm run lint
+        working-directory: ./apps/core
 
       - name: Generate Prisma Client
         run: npx prisma generate
-
-      - name: Run database migrations
-        run: npx prisma migrate deploy
-        env:
-          DATABASE_URL: postgresql://moramor:moramor123@localhost:5432/moramor_test?schema=public
+        working-directory: ./apps/core
 
       - name: Run tests
         run: npm test
+        working-directory: ./apps/core
         env:
           DATABASE_URL: postgresql://moramor:moramor123@localhost:5432/moramor_test?schema=public
           JWT_SECRET: test-secret-key
           JWT_REFRESH_SECRET: test-refresh-secret-key
-
-      - name: Run test coverage
-        run: npm run test:cov
-        env:
-          DATABASE_URL: postgresql://moramor:moramor123@localhost:5432/moramor_test?schema=public
-
-      - name: Upload coverage to Codecov
-        uses: codecov/codecov-action@v3
-        with:
-          files: coverage/lcov.info
-          flags: unittests
-          name: codecov-umbrella
 
   build:
     name: Build Docker Image
@@ -88,78 +75,28 @@ jobs:
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v2
-
-      - name: Check Docker credentials
-        id: docker-creds
-        run: |
-          if [ -n "${{ secrets.DOCKER_USERNAME }}" ] && [ -n "${{ secrets.DOCKER_PASSWORD }}" ]; then
-            echo "has_creds=true" >> $GITHUB_OUTPUT
-          else
-            echo "has_creds=false" >> $GITHUB_OUTPUT
-          fi
+        uses: docker/setup-buildx-action@v3
 
       - name: Login to Docker Hub
-        if: steps.docker-creds.outputs.has_creds == 'true'
-        uses: docker/login-action@v2
+        uses: docker/login-action@v3
         with:
           username: ${{ secrets.DOCKER_USERNAME }}
           password: ${{ secrets.DOCKER_PASSWORD }}
 
       - name: Build and push
-        uses: docker/build-push-action@v4
+        uses: docker/build-push-action@v5
         with:
-          context: .
-          file: ./Dockerfile
-          push: ${{ steps.docker-creds.outputs.has_creds == 'true' }}
+          context: ./apps/core
+          file: ./apps/core/Dockerfile
+          push: true
           tags: |
-            ${{ steps.docker-creds.outputs.has_creds == 'true' && format('{0}/moramor-backend:latest', secrets.DOCKER_USERNAME) || 'moramor-backend:local' }}
-            ${{ steps.docker-creds.outputs.has_creds == 'true' && format('{0}/moramor-backend:{1}', secrets.DOCKER_USERNAME, github.sha) || format('moramor-backend:{0}', github.sha) }}
-          cache-from: ${{ steps.docker-creds.outputs.has_creds == 'true' && format('type=registry,ref={0}/moramor-backend:buildcache', secrets.DOCKER_USERNAME) || '' }}
-          cache-to: ${{ steps.docker-creds.outputs.has_creds == 'true' && format('type=registry,ref={0}/moramor-backend:buildcache,mode=max', secrets.DOCKER_USERNAME) || '' }}
-
-  deploy-staging:
-    name: Deploy to Staging
-    runs-on: ubuntu-latest
-    needs: build
-    if: github.ref == 'refs/heads/staging'
-    environment:
-      name: staging
-      url: https://staging-api.moramor.com
-
-    steps:
-      - name: Check SSH secrets
-        run: |
-          if [ -z "${{ secrets.STAGING_HOST }}" ]; then
-            echo "Error: STAGING_HOST secret is not set"
-            exit 1
-          fi
-          if [ -z "${{ secrets.STAGING_USERNAME }}" ]; then
-            echo "Error: STAGING_USERNAME secret is not set"
-            exit 1
-          fi
-          if [ -z "${{ secrets.STAGING_SSH_KEY }}" ]; then
-            echo "Error: STAGING_SSH_KEY secret is not set"
-            exit 1
-          fi
-          echo "All SSH secrets are configured"
-
-      - name: Deploy to staging server
-        uses: appleboy/ssh-action@v1.0.3
-        with:
-          host: ${{ secrets.STAGING_HOST }}
-          username: ${{ secrets.STAGING_USERNAME }}
-          key: ${{ secrets.STAGING_SSH_KEY }}
-          port: ${{ secrets.STAGING_SSH_PORT || 22 }}
-          timeout: 30s
-          script: |
-            cd /opt/moramor-backend
-            docker compose pull
-            docker compose up -d
-            docker compose exec -T app npx prisma migrate deploy
+            ${{ secrets.DOCKER_USERNAME }}/moramor-backend:latest
+            ${{ secrets.DOCKER_USERNAME }}/moramor-backend:${{ github.sha }}
+          cache-from: type=registry,ref=${{ secrets.DOCKER_USERNAME }}/moramor-backend:buildcache
+          cache-to: type=registry,ref=${{ secrets.DOCKER_USERNAME }}/moramor-backend:buildcache,mode=max
 
   deploy-production:
     name: Deploy to Production
@@ -168,25 +105,8 @@ jobs:
     if: github.ref == 'refs/heads/main'
     environment:
       name: production
-      url: https://api.moramor.com
 
     steps:
-      - name: Check SSH secrets
-        run: |
-          if [ -z "${{ secrets.PRODUCTION_HOST }}" ]; then
-            echo "Error: PRODUCTION_HOST secret is not set"
-            exit 1
-          fi
-          if [ -z "${{ secrets.PRODUCTION_USERNAME }}" ]; then
-            echo "Error: PRODUCTION_USERNAME secret is not set"
-            exit 1
-          fi
-          if [ -z "${{ secrets.PRODUCTION_SSH_KEY }}" ]; then
-            echo "Error: PRODUCTION_SSH_KEY secret is not set"
-            exit 1
-          fi
-          echo "All SSH secrets are configured"
-
       - name: Deploy to production server
         uses: appleboy/ssh-action@v1.0.3
         with:
@@ -194,10 +114,25 @@ jobs:
           username: ${{ secrets.PRODUCTION_USERNAME }}
           key: ${{ secrets.PRODUCTION_SSH_KEY }}
           port: ${{ secrets.PRODUCTION_SSH_PORT || 22 }}
-          timeout: 30s
           script: |
+            set -e
             cd /root/project-core
-            docker compose pull
-            docker compose up -d
+            
+            echo "📥 Updating docker-compose and configs..."
+            git fetch origin main
+            git reset --hard origin/main
+            
+            echo "🔑 Logging into Docker Hub..."
+            echo "${{ secrets.DOCKER_PASSWORD }}" | docker login -u "${{ secrets.DOCKER_USERNAME }}" --password-stdin
+            
+            echo "🐳 Pulling latest image (Build is already done in GitHub)..."
+            docker compose pull core
+            
+            echo "🚀 Restarting core service..."
+            docker compose up -d --no-deps core
+            
+            echo "🗄️ Running migrations..."
             docker compose exec -T core npx prisma migrate deploy
-
+            
+            echo "🧹 Cleaning up old images..."
+            docker image prune -f
