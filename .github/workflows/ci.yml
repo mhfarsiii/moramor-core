@@ -13,7 +13,7 @@ jobs:
         with:
           node-version: '22'
       - name: Install
-        run: npm install
+        run: npm ci
       - name: Prisma Generate
         run: npx prisma generate
       - name: Lint
@@ -22,21 +22,25 @@ jobs:
   build:
     needs: lint-and-test
     runs-on: ubuntu-latest
+    permissions:
+      packages: write
+      contents: read
     steps:
       - uses: actions/checkout@v4
-      - uses: docker/setup-buildx-action@v3
-      - uses: docker/login-action@v3
+      - name: Login to GHCR
+        uses: docker/login-action@v3
         with:
-          username: ${{ secrets.DOCKER_USERNAME }}
-          password: ${{ secrets.DOCKER_PASSWORD }}
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
       - name: Build and Push
         uses: docker/build-push-action@v5
         with:
-          context: . # چون در گیت‌هاب همه چیز در روت است
+          context: .
           file: ./Dockerfile
           push: true
-          tags: ${{ secrets.DOCKER_USERNAME }}/moramor-core:latest
-
+          # نام یوزرنیم گیت‌هاب خودت را اینجا چک کن (mhfarsiii)
+          tags: ghcr.io/mhfarsiii/moramor-core:latest
   deploy:
     needs: build
     runs-on: ubuntu-latest
@@ -49,28 +53,27 @@ jobs:
           key: ${{ secrets.PRODUCTION_SSH_KEY }}
           script: |
             set -e
-            # ۱. رفتن به پوشه اصلی پروژه در سرور
             cd /root/project-core
             
-            # ۲. آپدیت کردن کدها فقط در پوشه core
+            # ۱. آپدیت فایل‌های تنظیمات
             cd apps/core
             git fetch origin main
             git reset --hard origin/main
-            
-            # ۳. برگشت به عقب برای اجرای داکر کامپوز
             cd ../..
             
-            echo "${{ secrets.DOCKER_PASSWORD }}" | docker login -u "${{ secrets.DOCKER_USERNAME }}" --password-stdin || true
+            # ۲. لاگین به گیت‌هاب (این رجیستری در ایران باز است)
+            echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
             
-            # ۲. لاگین به آینه آروان
-            echo "${{ secrets.DOCKER_PASSWORD }}" | docker login docker.arvancloud.ir -u "${{ secrets.DOCKER_USERNAME }}" --password-stdin
+            # ۳. دانلود ایمیج جدید از گیت‌هاب
+            docker pull ghcr.io/mhfarsiii/moramor-core:latest
             
-            # ۴. دانلود و اجرای ایمیج (بدون بیلد)
-            docker pull docker.arvancloud.ir/${{ secrets.DOCKER_USERNAME }}/moramor-core:latest
-            docker compose up -d core
-            docker compose up -d 
+            # ۴. نوسازی کانتینرها (ابتدا دیتابیس و بعد اپلیکیشن)
+            docker compose up -d
             
-            # ۵. اجرای مایگریشن
-            
+            # ۵. اجرای مایگریشن پریزما بعد از کمی صبر
+            echo "Waiting for database to be ready..."
+            sleep 15
             docker compose exec -T core npx prisma migrate deploy
+            
+            # ۶. پاکسازی ایمیج‌های قدیمی
             docker image prune -f
