@@ -2,20 +2,20 @@
 FROM node:22-alpine AS builder
 WORKDIR /app
 
-# نصب ابزارهای لازم برای پریزما
+# نصب ابزارهای مورد نیاز سیستم‌عامل
 RUN apk add --no-cache openssl libc6-compat
 
-# کپی فایل‌های پکیج
+# ۱. کپی فایل‌های پکیج و نصب دپندنسی‌ها
 COPY package*.json ./
-
-# نصب دپندنسی‌ها (در گیت‌هاب مستقیم از npm می‌گیرد)
 RUN npm ci
 
-# کپی کل کد و تولید کلاینت پریزما
+# ۲. کپی کردن کل پروژه (شامل پوشه src و prisma)
 COPY . .
+
+# ۳. تولید کلاینت پریزما (حتماً بعد از کپی شدن فایل schema.prisma)
 RUN npx prisma generate
 
-# بیلد نهایی پروژه
+# ۴. اجرای بیلد (حالا تمام فایل‌های src/common موجود هستند)
 RUN npm run build
 
 # Stage 2: Run
@@ -24,7 +24,7 @@ WORKDIR /app
 RUN apk add --no-cache openssl libc6-compat
 ENV NODE_ENV=production
 
-# کپی فایل‌های لازم از مرحله بیلد
+# کپی کردن خروجی‌ها از مرحله قبل
 COPY --from=builder /app/node_modules ./node_modules
 COPY --from=builder /app/dist ./dist
 COPY --from=builder /app/package*.json ./
