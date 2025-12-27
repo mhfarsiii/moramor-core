@@ -92,6 +92,60 @@ export class AuthService {
     return userWithoutPassword;
   }
 
+  /**
+   * Authenticate user with email and password
+   * @param email - User email address
+   * @param password - User password
+   * @returns Promise with user data and tokens
+   */
+  async login(email: string, password: string) {
+    // Normalize email to lowercase for consistency
+    const normalizedEmail = email.toLowerCase().trim();
+
+    // Find user by email
+    const user = await this.prisma.user.findUnique({
+      where: { email: normalizedEmail },
+    });
+
+    // Check if user exists
+    if (!user) {
+      throw new UnauthorizedException('ایمیل یا رمز عبور اشتباه است');
+    }
+
+    // Check if user has a password (not OAuth-only user)
+    if (!user.password) {
+      throw new UnauthorizedException('این حساب کاربری با رمز عبور قابل ورود نیست. لطفاً از روش دیگری استفاده کنید');
+    }
+
+    // Check if user is active
+    if (!user.isActive) {
+      throw new UnauthorizedException('حساب کاربری شما غیرفعال شده است');
+    }
+
+    // Verify password
+    const isPasswordValid = await bcrypt.compare(password, user.password);
+    if (!isPasswordValid) {
+      throw new UnauthorizedException('ایمیل یا رمز عبور اشتباه است');
+    }
+
+    // Generate JWT tokens
+    const tokens = await this.generateTokens(user.id, user.email, user.role);
+
+    // Store refresh token
+    await this.storeRefreshToken(user.id, tokens.refreshToken);
+
+    // Remove password from response
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    const { password: _, ...userWithoutPassword } = user;
+
+    this.logger.log(`User logged in successfully: ${normalizedEmail}`);
+
+    return {
+      user: userWithoutPassword,
+      ...tokens,
+    };
+  }
+
   async googleLogin(profile: any) {
     const { email, displayName, id: googleId } = profile;
 

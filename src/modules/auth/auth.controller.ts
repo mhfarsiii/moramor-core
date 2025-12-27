@@ -6,6 +6,7 @@ import { Response } from 'express';
 import { ConfigService } from '@nestjs/config';
 import { AuthService } from './auth.service';
 import { RefreshTokenDto } from './dto/refresh-token.dto';
+import { LoginDto } from './dto/login.dto';
 import { ForgotPasswordDto } from './dto/forgot-password.dto';
 import { ResetPasswordDto } from './dto/reset-password.dto';
 import { SendCodeDto } from './dto/send-code.dto';
@@ -28,6 +29,36 @@ export class AuthController {
   @ApiResponse({ status: 401, description: 'توکن نامعتبر یا منقضی شده است' })
   async refreshTokens(@Body() refreshTokenDto: RefreshTokenDto) {
     return this.authService.refreshTokens(refreshTokenDto.refreshToken);
+  }
+
+  @Public()
+  @Post('login')
+  @ApiOperation({ summary: 'ورود به سیستم با ایمیل و رمز عبور' })
+  @ApiResponse({
+    status: 200,
+    description: 'ورود با موفقیت انجام شد',
+    schema: {
+      type: 'object',
+      properties: {
+        accessToken: {
+          type: 'string',
+          description: 'JWT Access Token',
+        },
+        refreshToken: {
+          type: 'string',
+          description: 'JWT Refresh Token',
+        },
+        user: {
+          type: 'object',
+          description: 'اطلاعات کاربر',
+        },
+      },
+    },
+  })
+  @ApiResponse({ status: 401, description: 'ایمیل یا رمز عبور اشتباه است' })
+  @ApiResponse({ status: 400, description: 'داده‌های ورودی نامعتبر است' })
+  async login(@Body() loginDto: LoginDto) {
+    return this.authService.login(loginDto.email, loginDto.password);
   }
 
   @Post('logout')
