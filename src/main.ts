@@ -42,17 +42,18 @@ async function bootstrap() {
   const isDevelopment = configService.get('NODE_ENV') === 'development';
   const corsOrigin = configService.get('CORS_ORIGIN');
 
-  // In development, allow all localhost origins for flexibility
-  let allowedOrigins: string[] | boolean = true;
-  if (!isDevelopment && corsOrigin) {
-    if (corsOrigin === '*') {
-      allowedOrigins = true;
-    } else {
-      allowedOrigins = corsOrigin.split(',').map((origin) => origin.trim());
-    }
-  } else if (isDevelopment) {
+  // Build allowed origins list
+  let allowedOrigins:
+    | string[]
+    | boolean
+    | ((
+        origin: string | undefined,
+        callback: (err: Error | null, allow?: boolean) => void,
+      ) => void);
+
+  if (isDevelopment) {
     // In development, allow common localhost ports
-    allowedOrigins = [
+    const devOrigins = [
       'http://localhost:3000',
       'http://localhost:3001',
       'http://localhost:5173', // Vite default
@@ -64,6 +65,43 @@ async function bootstrap() {
       'http://127.0.0.1:5173',
       ...(corsOrigin ? corsOrigin.split(',').map((origin) => origin.trim()) : []),
     ];
+    allowedOrigins = devOrigins;
+    console.log('🌍 CORS: Development mode - Allowed origins:', devOrigins);
+  } else {
+    // Production mode
+    if (corsOrigin === '*') {
+      allowedOrigins = true;
+      console.log('🌍 CORS: Production mode - Allowing all origins (*)');
+    } else if (corsOrigin) {
+      const origins = corsOrigin
+        .split(',')
+        .map((origin) => origin.trim())
+        .filter(Boolean);
+      allowedOrigins = origins;
+      console.log('🌍 CORS: Production mode - Allowed origins:', origins);
+    } else {
+      // If CORS_ORIGIN is not set in production, use dynamic origin validation
+      // This allows origins that match common patterns
+      allowedOrigins = (
+        origin: string | undefined,
+        callback: (err: Error | null, allow?: boolean) => void,
+      ) => {
+        // Allow requests with no origin (like mobile apps or curl requests)
+        if (!origin) {
+          return callback(null, true);
+        }
+
+        // Log the origin for debugging
+        console.log('🌍 CORS: Checking origin:', origin);
+
+        // In production without CORS_ORIGIN set, allow all origins
+        // This is a fallback - ideally CORS_ORIGIN should be set
+        console.warn(
+          '⚠️  CORS_ORIGIN not set in production - allowing all origins. Please set CORS_ORIGIN for security.',
+        );
+        callback(null, true);
+      };
+    }
   }
 
   app.enableCors({
@@ -82,6 +120,7 @@ async function bootstrap() {
     exposedHeaders: ['Authorization', 'Content-Length', 'X-Foo', 'X-Bar'],
     preflightContinue: false,
     optionsSuccessStatus: 204,
+    maxAge: 86400, // 24 hours
   });
 
   // Validation
