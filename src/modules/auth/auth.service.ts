@@ -340,50 +340,83 @@ export class AuthService {
     let otpCodeId: string | null = null;
 
     try {
-      // Check if user exists
-      let user = await this.prisma.user.findUnique({
-        where: { email: normalizedEmail },
-      });
+      // Use transaction to ensure atomicity and handle race conditions
+      const result = await this.prisma.$transaction(
+        async (tx) => {
+          // Check if user exists or create new one
+          // Using upsert to handle race conditions where multiple requests
+          // might try to create the same user simultaneously
+          let user = await tx.user.findUnique({
+            where: { email: normalizedEmail },
+          });
 
-      // If user doesn't exist, create a new user with isActive: true and emailVerified: false
-      if (!user) {
-        user = await this.prisma.user.create({
-          data: {
-            email: normalizedEmail,
-            name: normalizedEmail.split('@')[0], // Use email prefix as default name
-            isActive: true,
-            emailVerified: false,
-          },
-        });
-        isNewUser = true;
-        userId = user.id;
-        this.logger.log(`New user created for OTP flow: ${normalizedEmail}`);
-      }
+          if (!user) {
+            try {
+              user = await tx.user.create({
+                data: {
+                  email: normalizedEmail,
+                  name: normalizedEmail.split('@')[0], // Use email prefix as default name
+                  isActive: true,
+                  emailVerified: false,
+                },
+              });
+              isNewUser = true;
+              this.logger.log(`New user created for OTP flow: ${normalizedEmail}`);
+            } catch (createError: any) {
+              // Handle race condition: if user was created by another request
+              if (createError?.code === 'P2002') {
+                // Unique constraint violation - user was created by another request
+                user = await tx.user.findUnique({
+                  where: { email: normalizedEmail },
+                });
+                if (!user) {
+                  throw new BadRequestException('خطا در ایجاد کاربر. لطفاً دوباره تلاش کنید');
+                }
+                this.logger.warn(
+                  `User ${normalizedEmail} was created by concurrent request, using existing user`,
+                );
+              } else {
+                throw createError;
+              }
+            }
+          }
 
-      // Delete any existing OTP codes for this email
-      // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-      // @ts-ignore
-      await this.prisma.otpCode.deleteMany({
-        where: { email: normalizedEmail },
-      });
+          userId = user.id;
 
-      // Generate 6-digit random code
-      const code = Math.floor(100000 + Math.random() * 900000).toString();
+          // Delete any existing OTP codes for this email
+          // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+          // @ts-ignore
+          await tx.otpCode.deleteMany({
+            where: { email: normalizedEmail },
+          });
 
-      // Store code with 5-minute expiration
-      const expiresAt = new Date(Date.now() + 5 * 60 * 1000); // 5 minutes
+          // Generate 6-digit random code
+          const code = Math.floor(100000 + Math.random() * 900000).toString();
 
-      // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-      // @ts-ignore
-      const otpCode = await this.prisma.otpCode.create({
-        data: {
-          email: normalizedEmail,
-          code,
-          userId: user.id,
-          expiresAt,
+          // Store code with 5-minute expiration
+          const expiresAt = new Date(Date.now() + 5 * 60 * 1000); // 5 minutes
+
+          // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+          // @ts-ignore
+          const otpCode = await tx.otpCode.create({
+            data: {
+              email: normalizedEmail,
+              code,
+              userId: user.id,
+              expiresAt,
+            },
+          });
+
+          return { user, code, otpCodeId: otpCode.id };
         },
-      });
-      otpCodeId = otpCode.id;
+        {
+          maxWait: 5000, // Maximum time to wait for a transaction slot
+          timeout: 10000, // Maximum time the transaction can run
+        },
+      );
+
+      const { user, code } = result;
+      otpCodeId = result.otpCodeId;
 
       // Send OTP code via email
       // If this fails, we need to clean up the newly created user and OTP code
@@ -451,6 +484,11 @@ export class AuthService {
             cleanupError,
           );
         }
+      }
+
+      // Re-throw BadRequestException if it was thrown in transaction
+      if (error instanceof BadRequestException) {
+        throw error;
       }
 
       throw new BadRequestException('خطا در ارسال کد تأیید. لطفاً دوباره تلاش کنید');
