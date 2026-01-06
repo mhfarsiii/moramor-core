@@ -91,6 +91,25 @@ export class MailService {
    */
   async sendOtpEmail(email: string, code: string, userName?: string): Promise<void> {
     try {
+      // Validate email configuration before attempting to send
+      const mailUser = this.configService.get<string>('MAIL_USER');
+      const mailPass = this.configService.get<string>('MAIL_PASS');
+      const mailHost = this.configService.get<string>('MAIL_HOST');
+
+      if (!mailHost || !mailUser || !mailPass) {
+        const missingConfigs: string[] = [];
+        if (!mailHost) missingConfigs.push('MAIL_HOST');
+        if (!mailUser) missingConfigs.push('MAIL_USER');
+        if (!mailPass) missingConfigs.push('MAIL_PASS');
+
+        this.logger.error(
+          `Email configuration is missing: ${missingConfigs.join(', ')}`,
+        );
+        throw new Error(
+          `پیکربندی ایمیل ناقص است. متغیرهای محیطی زیر تنظیم نشده‌اند: ${missingConfigs.join(', ')}`,
+        );
+      }
+
       // Add timeout to prevent hanging connections
       const sendMailPromise = this.mailerService.sendMail({
         to: email,
@@ -114,7 +133,12 @@ export class MailService {
 
       this.logger.log(`OTP code email sent successfully to ${email}`);
     } catch (error) {
-      this.logger.error(`Failed to send OTP code email to ${email}:`, error);
+      const errorMessage =
+        error instanceof Error ? error.message : 'خطای نامشخص در ارسال ایمیل';
+      this.logger.error(
+        `Failed to send OTP code email to ${email}. Error: ${errorMessage}`,
+        error instanceof Error ? error.stack : undefined,
+      );
       throw error;
     }
   }

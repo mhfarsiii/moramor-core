@@ -384,8 +384,6 @@ export class AuthService {
           userId = user.id;
 
           // Delete any existing OTP codes for this email
-          // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-          // @ts-ignore
           await tx.otpCode.deleteMany({
             where: { email: normalizedEmail },
           });
@@ -396,8 +394,6 @@ export class AuthService {
           // Store code with 5-minute expiration
           const expiresAt = new Date(Date.now() + 5 * 60 * 1000); // 5 minutes
 
-          // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-          // @ts-ignore
           const otpCode = await tx.otpCode.create({
             data: {
               email: normalizedEmail,
@@ -437,8 +433,6 @@ export class AuthService {
         try {
           // Delete OTP code if it was created
           if (otpCodeId) {
-            // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-            // @ts-ignore
             await this.prisma.otpCode
               .delete({
                 where: { id: otpCodeId },
@@ -469,8 +463,6 @@ export class AuthService {
       } else if (otpCodeId) {
         // If user existed but OTP code was created, clean up the OTP code
         try {
-          // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-          // @ts-ignore
           await this.prisma.otpCode
             .delete({
               where: { id: otpCodeId },
@@ -491,6 +483,34 @@ export class AuthService {
         throw error;
       }
 
+      // Log the actual error for debugging
+      const errorMessage = error instanceof Error ? error.message : 'خطای نامشخص در ارسال ایمیل';
+      const errorStack = error instanceof Error ? error.stack : undefined;
+
+      this.logger.error(
+        `Failed to send OTP code to ${normalizedEmail}. Error: ${errorMessage}`,
+        errorStack,
+      );
+
+      // Check for specific error types to provide better error messages
+      if (errorMessage.includes('timeout') || errorMessage.includes('Timeout')) {
+        throw new BadRequestException(
+          'خطا در ارسال کد تأیید: زمان اتصال به سرور ایمیل به پایان رسید. لطفاً دوباره تلاش کنید',
+        );
+      }
+
+      if (
+        errorMessage.includes('authentication') ||
+        errorMessage.includes('Authentication') ||
+        errorMessage.includes('Invalid login')
+      ) {
+        throw new BadRequestException('خطا در پیکربندی سرور ایمیل. لطفاً با پشتیبانی تماس بگیرید');
+      }
+
+      if (errorMessage.includes('ENOTFOUND') || errorMessage.includes('ECONNREFUSED')) {
+        throw new BadRequestException('خطا در اتصال به سرور ایمیل. لطفاً با پشتیبانی تماس بگیرید');
+      }
+
       throw new BadRequestException('خطا در ارسال کد تأیید. لطفاً دوباره تلاش کنید');
     }
   }
@@ -508,8 +528,6 @@ export class AuthService {
 
     try {
       // Find OTP code
-      // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-      // @ts-ignore
       const otpCode = await this.prisma.otpCode.findFirst({
         where: {
           email: normalizedEmail,
@@ -527,8 +545,6 @@ export class AuthService {
       // Check if code is expired
       if (new Date() > otpCode.expiresAt) {
         // Clean up expired code
-        // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-        // @ts-ignore
         await this.prisma.otpCode.delete({
           where: { id: otpCode.id },
         });
@@ -560,15 +576,11 @@ export class AuthService {
         });
 
         // Delete OTP code
-        // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-        // @ts-ignore
         await tx.otpCode.delete({
           where: { id: otpCode.id },
         });
 
         // Clean up any other expired OTP codes for this email
-        // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-        // @ts-ignore
         await tx.otpCode.deleteMany({
           where: {
             email: normalizedEmail,
