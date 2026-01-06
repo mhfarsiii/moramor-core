@@ -59,8 +59,9 @@ import { HealthController } from './health/health.controller';
         const mailFromName = configService.get<string>('MAIL_FROM_NAME', 'Moramor Store');
 
         // Determine template directory path - works in both dev and production
-        // Use project root to find src/templates, which works regardless of where code is running from
-        const templateDir = join(process.cwd(), 'src', 'templates');
+        // Use process.cwd() to resolve to dist/templates in the compiled production folder
+        // This ensures templates are found in both local development and Docker production
+        const templateDir = join(process.cwd(), 'dist', 'templates');
 
         // Set secure to true for port 465 (SSL/TLS), false for other ports (STARTTLS)
         const isSecure = mailPort === 465;

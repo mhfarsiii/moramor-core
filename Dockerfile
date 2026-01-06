@@ -29,6 +29,8 @@ COPY --from=builder /app/node_modules ./node_modules
 COPY --from=builder /app/dist ./dist
 COPY --from=builder /app/package*.json ./
 COPY --from=builder /app/prisma ./prisma
+# Ensure templates are available if the compiler missed them
+COPY --from=builder /app/src/templates ./dist/templates
 
 EXPOSE 3000
 CMD ["node", "dist/main.js"]
