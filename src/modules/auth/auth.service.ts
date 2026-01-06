@@ -114,7 +114,9 @@ export class AuthService {
 
     // Check if user has a password (not OAuth-only user)
     if (!user.password) {
-      throw new UnauthorizedException('این حساب کاربری با رمز عبور قابل ورود نیست. لطفاً از روش دیگری استفاده کنید');
+      throw new UnauthorizedException(
+        'این حساب کاربری با رمز عبور قابل ورود نیست. لطفاً از روش دیگری استفاده کنید',
+      );
     }
 
     // Check if user is active
@@ -333,6 +335,10 @@ export class AuthService {
     // Normalize email to lowercase for consistency
     const normalizedEmail = email.toLowerCase().trim();
 
+    let isNewUser = false;
+    let userId: string | null = null;
+    let otpCodeId: string | null = null;
+
     try {
       // Check if user exists
       let user = await this.prisma.user.findUnique({
@@ -349,6 +355,8 @@ export class AuthService {
             emailVerified: false,
           },
         });
+        isNewUser = true;
+        userId = user.id;
         this.logger.log(`New user created for OTP flow: ${normalizedEmail}`);
       }
 
@@ -367,7 +375,7 @@ export class AuthService {
 
       // eslint-disable-next-line @typescript-eslint/ban-ts-comment
       // @ts-ignore
-      await this.prisma.otpCode.create({
+      const otpCode = await this.prisma.otpCode.create({
         data: {
           email: normalizedEmail,
           code,
@@ -375,8 +383,10 @@ export class AuthService {
           expiresAt,
         },
       });
+      otpCodeId = otpCode.id;
 
       // Send OTP code via email
+      // If this fails, we need to clean up the newly created user and OTP code
       await this.mailService.sendOtpEmail(normalizedEmail, code, user.name);
 
       this.logger.log(`OTP code sent to: ${normalizedEmail}`);
@@ -387,6 +397,62 @@ export class AuthService {
       };
     } catch (error) {
       this.logger.error(`Failed to send OTP code to ${normalizedEmail}:`, error);
+
+      // Clean up: If we created a new user and OTP code, but email sending failed,
+      // we need to delete them to maintain data consistency
+      if (isNewUser && userId) {
+        try {
+          // Delete OTP code if it was created
+          if (otpCodeId) {
+            // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+            // @ts-ignore
+            await this.prisma.otpCode
+              .delete({
+                where: { id: otpCodeId },
+              })
+              .catch(() => {
+                // Ignore errors during cleanup
+              });
+          }
+
+          // Delete the newly created user
+          await this.prisma.user
+            .delete({
+              where: { id: userId },
+            })
+            .catch(() => {
+              // Ignore errors during cleanup
+            });
+
+          this.logger.warn(
+            `Cleaned up newly created user ${userId} due to email sending failure for ${normalizedEmail}`,
+          );
+        } catch (cleanupError) {
+          this.logger.error(
+            `Failed to clean up user ${userId} after email sending failure:`,
+            cleanupError,
+          );
+        }
+      } else if (otpCodeId) {
+        // If user existed but OTP code was created, clean up the OTP code
+        try {
+          // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+          // @ts-ignore
+          await this.prisma.otpCode
+            .delete({
+              where: { id: otpCodeId },
+            })
+            .catch(() => {
+              // Ignore errors during cleanup
+            });
+        } catch (cleanupError) {
+          this.logger.error(
+            `Failed to clean up OTP code ${otpCodeId} after email sending failure:`,
+            cleanupError,
+          );
+        }
+      }
+
       throw new BadRequestException('خطا در ارسال کد تأیید. لطفاً دوباره تلاش کنید');
     }
   }
