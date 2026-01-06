@@ -71,3 +71,5 @@ If a migration fails partway through:
 
 3. If schema is incomplete, manually fix and then mark as resolved, or rollback and reapply.
 
+
+
