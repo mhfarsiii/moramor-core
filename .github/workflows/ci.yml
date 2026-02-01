@@ -45,41 +45,47 @@ jobs:
     needs: build
     runs-on: ubuntu-latest
     steps:
-      - name: SSH Deploy
+      - uses: actions/checkout@v4
+
+      # ۱. ساخت ایمیج روی خود گیت‌هاب (چون اینجا اینترنت عالیه)
+      - name: Build Image locally
+        run: docker build -t moramor-core:latest .
+
+      # ۲. تبدیل ایمیج به یک فایل فشرده
+      - name: Save Image to file
+        run: docker save moramor-core:latest | gzip > moramor-core.tar.gz
+
+      # ۳. ارسال فایل به سرور تو (بسیار پایدارتر از دانلود داکر)
+      - name: Copy Image to Server
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.PRODUCTION_HOST }}
+          username: ${{ secrets.PRODUCTION_USERNAME }}
+          key: ${{ secrets.PRODUCTION_SSH_KEY }}
+          source: "moramor-core.tar.gz"
+          target: "/root/project-core"
+
+      # ۴. بارگذاری فایل در داکرِ سرور و اجرا
+      - name: Load and Run
         uses: appleboy/ssh-action@v1.0.3
         with:
           host: ${{ secrets.PRODUCTION_HOST }}
           username: ${{ secrets.PRODUCTION_USERNAME }}
           key: ${{ secrets.PRODUCTION_SSH_KEY }}
-          command_timeout: 40m # زمان رو باز هم بیشتر کردیم که خیالت راحت باشه
+          command_timeout: 30m
           script: |
-            set -e
             cd /root/project-core
 
-            # ۱. آپدیت تنظیمات پروژه
-            cd apps/core
-            git fetch origin main
-            git reset --hard origin/main
-            cd ../..
+            # بارگذاری ایمیج از فایل فرستاده شده
+            docker load < moramor-core.tar.gz
 
-            # ۲. لاگین به رجیستری گیت‌هاب
-            echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
-
-            # ۳. دانلود ایمیج با سیستم "تلاش مجدد" (Retry Logic)
-            # اگر اینترنت لحظه‌ای قطع بشه، ۵ بار تلاش می‌کنه تا دانلود کامل بشه
-            echo "Starting pull with retry logic..."
-            for i in {1..5}; do
-              docker pull -q ghcr.io/mhfarsiii/moramor-core:latest && break || (echo "Connection failed, retrying in 20 seconds ($i/5)..." && sleep 20);
-            done
-
-            # ۴. بازسازی کانتینرها با ایمیج جدید
-            echo "Updating containers..."
+            # نوسازی کانتینرها
             docker compose up -d
 
-            # ۵. اجرای مایگریشن‌های پریزما (Prisma)
-            echo "Waiting for database to be ready..."
-            sleep 25
+            # اجرای مایگریشن
+            sleep 15
             docker compose exec -T core npx prisma migrate deploy
 
-            # ۶. پاکسازی ایمیج‌های قدیمی برای خالی شدن فضای هارد
+            # پاکسازی فایل موقتی
+            rm moramor-core.tar.gz
             docker image prune -f
