@@ -38,36 +38,27 @@ async function bootstrap() {
   );
   app.use(compression());
 
-  // CORS - Enhanced configuration for development and production
+  // CORS - Full fix: development allows any origin, production uses CORS_ORIGIN
   const isDevelopment = configService.get('NODE_ENV') === 'development';
   const corsOrigin = configService.get('CORS_ORIGIN');
 
-  // In development, allow all localhost origins for flexibility
-  let allowedOrigins: string[] | boolean = true;
-  if (!isDevelopment && corsOrigin) {
-    if (corsOrigin === '*') {
-      allowedOrigins = true;
-    } else {
-      allowedOrigins = corsOrigin.split(',').map((origin) => origin.trim());
-    }
-  } else if (isDevelopment) {
-    // In development, allow common localhost ports
-    allowedOrigins = [
-      'http://localhost:3000',
-      'http://localhost:3001',
-      'http://localhost:5173', // Vite default
-      'http://localhost:5174',
-      'http://localhost:8080',
-      'http://localhost:4200', // Angular default
-      'http://127.0.0.1:3000',
-      'http://127.0.0.1:3001',
-      'http://127.0.0.1:5173',
-      ...(corsOrigin ? corsOrigin.split(',').map((origin) => origin.trim()) : []),
-    ];
+  let corsOriginConfig: boolean | string[];
+
+  if (isDevelopment) {
+    // Development: allow any origin (localhost, 127.0.0.1, any port, IP, etc.)
+    // origin: true reflects request origin - works with credentials
+    corsOriginConfig = true;
+  } else if (corsOrigin === '*' || !corsOrigin) {
+    corsOriginConfig = true;
+  } else {
+    corsOriginConfig = corsOrigin
+      .split(',')
+      .map((o) => o.trim())
+      .filter(Boolean);
   }
 
   app.enableCors({
-    origin: allowedOrigins,
+    origin: corsOriginConfig,
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS', 'HEAD'],
     allowedHeaders: [

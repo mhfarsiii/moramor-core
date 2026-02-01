@@ -28,3 +28,4 @@ echo "Migration $MIGRATION_NAME marked as applied"
 
 
 
+

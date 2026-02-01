@@ -24,3 +24,4 @@ ALTER TABLE "otp_codes" ADD CONSTRAINT "otp_codes_userId_fkey" FOREIGN KEY ("use
 
 
 
+
