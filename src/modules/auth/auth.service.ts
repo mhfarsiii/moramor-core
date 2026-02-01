@@ -234,7 +234,9 @@ export class AuthService {
 
       // Generate new reset token
       const resetToken = randomBytes(32).toString('hex');
-      const expiresAt = new Date(Date.now() + 60 * 60 * 1000); // 1 hour
+      const expiresAt = this._parseExpirationToDate(
+        this.configService.get<string>('PASSWORD_RESET_EXPIRATION', '2h'),
+      );
 
       // Store reset token
       await this.prisma.passwordResetToken.create({
@@ -391,8 +393,10 @@ export class AuthService {
           // Generate 6-digit random code
           const code = Math.floor(100000 + Math.random() * 900000).toString();
 
-          // Store code with 5-minute expiration
-          const expiresAt = new Date(Date.now() + 5 * 60 * 1000); // 5 minutes
+          // Store code with configurable expiration
+          const expiresAt = this._parseExpirationToDate(
+            this.configService.get<string>('OTP_CODE_EXPIRATION', '10m'),
+          );
 
           const otpCode = await tx.otpCode.create({
             data: {
@@ -639,11 +643,11 @@ export class AuthService {
     const [accessToken, refreshToken] = await Promise.all([
       this.jwtService.signAsync(payload, {
         secret: jwtSecret,
-        expiresIn: this.configService.get<string>('JWT_ACCESS_EXPIRATION', '15m'),
+        expiresIn: this.configService.get<string>('JWT_ACCESS_EXPIRATION', '24h'),
       }),
       this.jwtService.signAsync(payload, {
         secret: jwtRefreshSecret,
-        expiresIn: this.configService.get<string>('JWT_REFRESH_EXPIRATION', '7d'),
+        expiresIn: this.configService.get<string>('JWT_REFRESH_EXPIRATION', '30d'),
       }),
     ]);
 
@@ -653,14 +657,16 @@ export class AuthService {
     };
   }
 
-  private async storeRefreshToken(userId: string, token: string) {
-    const expiresIn = this.configService.get<string>('JWT_REFRESH_EXPIRATION', '7d');
+  /**
+   * Parse expiration string (e.g. "15m", "2h", "7d") to Date object
+   * @param expiresIn - Expiration string in format: number + unit (s=seconds, m=minutes, h=hours, d=days)
+   * @returns Date object representing expiration time
+   */
+  private _parseExpirationToDate(expiresIn: string): Date {
     const expiresAt = new Date();
-
-    // Parse expiration time
     const match = expiresIn.match(/(\d+)([smhd])/);
     if (match) {
-      const value = parseInt(match[1]);
+      const value = parseInt(match[1], 10);
       const unit = match[2];
 
       switch (unit) {
@@ -678,6 +684,12 @@ export class AuthService {
           break;
       }
     }
+    return expiresAt;
+  }
+
+  private async storeRefreshToken(userId: string, token: string) {
+    const expiresIn = this.configService.get<string>('JWT_REFRESH_EXPIRATION', '30d');
+    const expiresAt = this._parseExpirationToDate(expiresIn);
 
     await this.prisma.refreshToken.create({
       data: {

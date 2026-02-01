@@ -33,8 +33,10 @@ describe('AuthService', () => {
       const config = {
         JWT_SECRET: 'test-secret',
         JWT_REFRESH_SECRET: 'test-refresh-secret',
-        JWT_ACCESS_EXPIRATION: '15m',
-        JWT_REFRESH_EXPIRATION: '7d',
+        JWT_ACCESS_EXPIRATION: '24h',
+        JWT_REFRESH_EXPIRATION: '30d',
+        PASSWORD_RESET_EXPIRATION: '2h',
+        OTP_CODE_EXPIRATION: '10m',
       };
       return config[key];
     }),
