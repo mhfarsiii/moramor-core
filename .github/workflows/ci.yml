@@ -45,47 +45,35 @@ jobs:
     needs: build
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-
-      # ۱. ساخت ایمیج روی خود گیت‌هاب (چون اینجا اینترنت عالیه)
-      - name: Build Image locally
-        run: docker build -t moramor-core:latest .
-
-      # ۲. تبدیل ایمیج به یک فایل فشرده
-      - name: Save Image to file
-        run: docker save moramor-core:latest | gzip > moramor-core.tar.gz
-
-      # ۳. ارسال فایل به سرور تو (بسیار پایدارتر از دانلود داکر)
-      - name: Copy Image to Server
-        uses: appleboy/scp-action@v0.1.7
-        with:
-          host: ${{ secrets.PRODUCTION_HOST }}
-          username: ${{ secrets.PRODUCTION_USERNAME }}
-          key: ${{ secrets.PRODUCTION_SSH_KEY }}
-          source: "moramor-core.tar.gz"
-          target: "/root/project-core"
-
-      # ۴. بارگذاری فایل در داکرِ سرور و اجرا
-      - name: Load and Run
+      - name: SSH Deploy
         uses: appleboy/ssh-action@v1.0.3
         with:
           host: ${{ secrets.PRODUCTION_HOST }}
           username: ${{ secrets.PRODUCTION_USERNAME }}
           key: ${{ secrets.PRODUCTION_SSH_KEY }}
-          command_timeout: 30m
           script: |
+            set -e
             cd /root/project-core
 
-            # بارگذاری ایمیج از فایل فرستاده شده
-            docker load < moramor-core.tar.gz
+            # ۱. آپدیت فایل‌های تنظیمات
+            cd apps/core
+            git fetch origin main
+            git reset --hard origin/main
+            cd ../..
 
-            # نوسازی کانتینرها
+            # ۲. لاگین به گیت‌هاب (این رجیستری در ایران باز است)
+            echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
+
+            # ۳. دانلود ایمیج جدید از گیت‌هاب
+            docker pull ghcr.io/mhfarsiii/moramor-core:latest
+
+            # ۴. نوسازی کانتینرها (ابتدا دیتابیس و بعد اپلیکیشن)
             docker compose up -d
 
-            # اجرای مایگریشن
+            # ۵. اجرای مایگریشن پریزما بعد از کمی صبر
+            echo "Waiting for database to be ready..."
             sleep 15
             docker compose exec -T core npx prisma migrate deploy
 
-            # پاکسازی فایل موقتی
-            rm moramor-core.tar.gz
+            # ۶. پاکسازی ایمیج‌های قدیمی
             docker image prune -f
