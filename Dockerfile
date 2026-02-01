@@ -1,5 +1,5 @@
 # مرحله اول: Build
-FROM node:22-alpine AS build-stage
+FROM node:22-alpine AS builder
 WORKDIR /app
 RUN apk add --no-cache openssl libc6-compat
 COPY package*.json ./
@@ -8,22 +8,22 @@ COPY . .
 RUN npx prisma generate
 RUN npm run build
 
-# مرحله دوم: Production
+# مرحله دوم: Run (اینجا معجزه می‌شود)
 FROM node:22-alpine
 WORKDIR /app
 RUN apk add --no-cache openssl libc6-compat
 ENV NODE_ENV=production
 
-# کپی کردن فایل‌ها از مرحله قبلی (نام مرحله باید دقیقاً یکی باشد)
-COPY --from=build-stage /app/package*.json ./
-COPY --from=build-stage /app/prisma ./prisma
+# فقط فایل‌های ضروری برای نصب پکیج‌های اجرایی
+COPY --from=builder /app/package*.json ./
+COPY --from=builder /app/prisma ./prisma
 
-# نصب فقط ماژول‌های مورد نیاز اجرا
-RUN npm ci --only=production
+# نصب فقط پکیج‌های لازم برای اجرا (حذف devDependencies حجیم)
+RUN npm ci --omit=dev
 
-# کپی کردن کدهای کامپایل شده
-COPY --from=build-stage /app/dist ./dist
-COPY --from=build-stage /app/src/templates ./dist/templates
+# کپی کردن خروجی بیلد و قالب‌ها
+COPY --from=builder /app/dist ./dist
+COPY --from=builder /app/src/templates ./dist/templates
 
 EXPOSE 3000
 CMD ["node", "dist/main.js"]
