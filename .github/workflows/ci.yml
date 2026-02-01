@@ -51,29 +51,30 @@ jobs:
           host: ${{ secrets.PRODUCTION_HOST }}
           username: ${{ secrets.PRODUCTION_USERNAME }}
           key: ${{ secrets.PRODUCTION_SSH_KEY }}
+          command_timeout: 30m # افزایش زمان کل اجرای اسکریپت به ۳۰ دقیقه
           script: |
             set -e
             cd /root/project-core
-            
+
             # ۱. آپدیت فایل‌های تنظیمات
             cd apps/core
             git fetch origin main
             git reset --hard origin/main
             cd ../..
-            
-            # ۲. لاگین به گیت‌هاب (این رجیستری در ایران باز است)
+
+            # ۲. لاگین
             echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
-            
-            # ۳. دانلود ایمیج جدید از گیت‌هاب
-            docker pull ghcr.io/mhfarsiii/moramor-core:latest
-            
-            # ۴. نوسازی کانتینرها (ابتدا دیتابیس و بعد اپلیکیشن)
+
+            # ۳. دانلود ایمیج با حالت بی‌صدا (برای جلوگیری از پر شدن بافر لاگ)
+            docker pull -q ghcr.io/mhfarsiii/moramor-core:latest
+
+            # ۴. نوسازی کانتینرها
             docker compose up -d
-            
-            # ۵. اجرای مایگریشن پریزما بعد از کمی صبر
+
+            # ۵. اجرای مایگریشن
             echo "Waiting for database to be ready..."
-            sleep 15
+            sleep 20 # زمان انتظار کمی بیشتر برای اطمینان از بالا آمدن دیتابیس
             docker compose exec -T core npx prisma migrate deploy
-            
-            # ۶. پاکسازی ایمیج‌های قدیمی
+
+            # ۶. پاکسازی
             docker image prune -f
