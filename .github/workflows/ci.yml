@@ -3,6 +3,10 @@ name: Core CI/CD Pipeline
 on:
   push:
     branches: [main, master]
+    paths:
+      - 'apps/core/**'        # فقط تغییرات پوشه کور
+      - 'prisma/**'           # تغییرات دیتابیس
+      - '.github/workflows/deploy-core.yml'
 
 jobs:
   lint-and-test:
