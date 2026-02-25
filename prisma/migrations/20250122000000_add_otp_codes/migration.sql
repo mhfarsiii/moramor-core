@@ -20,7 +20,7 @@ CREATE INDEX "otp_codes_code_idx" ON "otp_codes"("code");
 CREATE INDEX "otp_codes_userId_idx" ON "otp_codes"("userId");
 
 -- AddForeignKey
-ALTER TABLE "otp_codes" ADD CONSTRAINT "otp_codes_userId_fkey" FOREIGN KEY ("userId") REFERENCES "users"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+-- ALTER TABLE "otp_codes" ADD CONSTRAINT "otp_codes_userId_fkey" FOREIGN KEY ("userId") REFERENCES "users"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 
 
