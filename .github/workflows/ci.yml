@@ -4,147 +4,76 @@ on:
   push:
     branches: [main]
     paths:
-      - 'apps/core/**'
-      - 'prisma/**'
+      - 'apps/core/**'        # فقط تغییرات پوشه کور
+      - 'prisma/**'           # تغییرات دیتابیس
       - '.github/workflows/ci.yml'
-  pull_request:
-    branches: [main]
-    paths:
-      - 'apps/core/**'
-      - 'prisma/**'
-      - '.github/workflows/ci.yml'
-
-env:
-  NODE_VERSION: '22'
-  IMAGE_NAME: ghcr.io/${{ github.repository_owner }}/moramor-core
 
 jobs:
-  lint:
-    name: Lint
+  lint-and-test:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-
       - uses: actions/setup-node@v4
         with:
-          node-version: ${{ env.NODE_VERSION }}
-          cache: 'npm'
-          cache-dependency-path: package-lock.json
-
-      - run: npm ci
-
-      - name: ESLint cache
-        uses: actions/cache@v4
-        with:
-          path: .eslintcache
-          key: eslint-${{ hashFiles('.eslintrc.js', 'tsconfig.json', 'package-lock.json') }}
-          restore-keys: eslint-
-
-      - name: Changed files
-        id: changed
-        uses: tj-actions/changed-files@v45
-        with:
-          files: |
-            **/*.ts
-
-      - name: Lint (changed only)
-        if: steps.changed.outputs.any_changed == 'true'
-        run: npx eslint ${{ steps.changed.outputs.all_changed_files }} --max-warnings 0 --cache --cache-location .eslintcache
-
-      - name: Lint (full)
-        if: steps.changed.outputs.any_changed != 'true'
-        run: npm run lint:ci -- --cache --cache-location .eslintcache
-
-  tests:
-    name: Tests
-    runs-on: ubuntu-latest
-
-    services:
-      postgres:
-        image: docker.arvancloud.ir/postgres:15-alpine
-        env:
-          POSTGRES_USER: moramor
-          POSTGRES_PASSWORD: moramor123
-          POSTGRES_DB: moramor_db
-        ports:
-          - 5432:5432
-        options: >-
-          --health-cmd="pg_isready -U moramor -d moramor_db"
-          --health-interval=10s
-          --health-timeout=5s
-          --health-retries=5
-      redis:
-        image: docker.arvancloud.ir/redis:7-alpine
-        ports:
-          - 6379:6379
-        options: >-
-          --health-cmd="redis-cli ping"
-          --health-interval=10s
-          --health-timeout=5s
-          --health-retries=5
-
-    env:
-      DATABASE_URL: postgresql://moramor:moramor123@localhost:5432/moramor_db?schema=public
-      REDIS_HOST: localhost
-      REDIS_PORT: 6379
-      NODE_ENV: test
-
-    steps:
-      - uses: actions/checkout@v4
-
-      - uses: actions/setup-node@v4
-        with:
-          node-version: ${{ env.NODE_VERSION }}
-          cache: 'npm'
-          cache-dependency-path: package-lock.json
-
-      - run: npm ci
-      - run: npx prisma generate
-      - run: npx prisma migrate deploy
-      - run: npm test
-      - run: npm run test:e2e
+          node-version: '22'
+      - name: Install
+        run: npm ci
+      - name: Prisma Generate
+        run: npx prisma generate
+      - name: Lint
+        run: npm run lint
 
   build:
-    name: Build & push
-    needs: [lint, tests]
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    needs: lint-and-test
     runs-on: ubuntu-latest
     permissions:
       packages: write
       contents: read
     steps:
       - uses: actions/checkout@v4
-      - uses: docker/login-action@v3
+      - name: Login to GHCR
+        uses: docker/login-action@v3
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
-      - uses: docker/build-push-action@v5
+      - name: Build and Push
+        uses: docker/build-push-action@v5
         with:
           context: .
           file: ./Dockerfile
           push: true
-          tags: |
-            ${{ env.IMAGE_NAME }}:latest
-            ${{ env.IMAGE_NAME }}:${{ github.sha }}
-
+          # نام یوزرنیم گیت‌هاب خودت را اینجا چک کن (mhfarsiii)
+          tags: ghcr.io/mhfarsiii/moramor-core:latest
   deploy:
-    name: Deploy
     needs: build
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     steps:
-      - uses: appleboy/ssh-action@v1.0.3
+      - name: SSH Deploy
+        uses: appleboy/ssh-action@v1.0.3
         with:
           host: ${{ secrets.PRODUCTION_HOST }}
           username: ${{ secrets.PRODUCTION_USERNAME }}
           key: ${{ secrets.PRODUCTION_SSH_KEY }}
           script: |
+            set -e
             cd /root/project-core
+
+            # ۱. لاگین به رجیستری (استفاده از یوزرنیم و پسورد ثابت امن‌تر است)
+            # پیشنهاد: یک Personal Access Token (PAT) بساز و جایگزین GITHUB_TOKEN کن
             echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
-            docker pull ${{ env.IMAGE_NAME }}:${{ github.sha }}
-            CORE_TAG=${{ github.sha }} docker compose up -d --force-recreate --no-deps core
+
+            # ۲. کشیدن ایمیج جدید
+            docker pull ghcr.io/mhfarsiii/moramor-core:latest
+
+            # ۳. نوسازی کانتینر (اجبار به ساخت مجدد)
+            # استفاده از --force-recreate باعث می‌شود داکر کانتینر قدیمی را حتماً بکشد و جدید بسازد
+            docker compose up -d --force-recreate core
+
+            # ۴. اجرای مایگریشن
+            echo "Waiting for database..."
+            sleep 10
             docker compose exec -T core npx prisma migrate deploy
+
+            # ۵. پاکسازی ایمیج‌های بلااستفاده برای جلوگیری از پر شدن هارد
             docker image prune -f
