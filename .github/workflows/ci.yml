@@ -59,21 +59,22 @@ jobs:
             set -e
             cd /root/project-core
 
-            # ۱. لاگین به رجیستری (استفاده از یوزرنیم و پسورد ثابت امن‌تر است)
-            # پیشنهاد: یک Personal Access Token (PAT) بساز و جایگزین GITHUB_TOKEN کن
+            # ۱. لاگین
             echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
 
-            # ۲. کشیدن ایمیج جدید
-            docker pull ghcr.io/mhfarsiii/moramor-core:latest
+            # ۲. کشیدن دقیق آخرین نسخه
+            docker compose pull core
 
-            # ۳. نوسازی کانتینر (اجبار به ساخت مجدد)
-            # استفاده از --force-recreate باعث می‌شود داکر کانتینر قدیمی را حتماً بکشد و جدید بسازد
-            docker compose up -d --force-recreate core
+            # ۳. ریستارت کردن سرویس با حذف کانتینر قبلی
+            # استفاده از --no-deps باعث می‌شود دیتابیس الکی ریستارت نشود
+            docker compose up -d --force-recreate --no-deps core
 
-            # ۴. اجرای مایگریشن
-            echo "Waiting for database..."
-            sleep 10
+            # ۴. صبر کردن برای بالا آمدن کانتینر قبل از مایگریشن
+            echo "Waiting for core to be ready..."
+            sleep 15
+
+            # ۵. اجرای مایگریشن
             docker compose exec -T core npx prisma migrate deploy
 
-            # ۵. پاکسازی ایمیج‌های بلااستفاده برای جلوگیری از پر شدن هارد
+            # ۶. پاکسازی
             docker image prune -f
