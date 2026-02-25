@@ -19,8 +19,51 @@ env:
   IMAGE_NAME: ghcr.io/${{ github.repository_owner }}/moramor-core
 
 jobs:
+  lint:
+    name: Lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          cache-dependency-path: package-lock.json
+
+      - run: npm ci
+
+      - name: ESLint cache
+        uses: actions/cache@v4
+        with:
+          path: .eslintcache
+          key: eslint-${{ hashFiles('.eslintrc.js', 'tsconfig.json', 'package-lock.json') }}
+          restore-keys: eslint-
+
+      - name: Changed files
+        id: changed
+        uses: tj-actions/changed-files@v45
+        with:
+          files: |
+            **/*.ts
+          dirs: |
+            src
+            apps
+            libs
+            test
+
+      - name: Lint (changed only)
+        if: steps.changed.outputs.any_changed == 'true'
+        run: npx eslint ${{ steps.changed.outputs.all_changed_files }} --max-warnings 0 --cache --cache-location .eslintcache
+
+      - name: Lint (full)
+        if: steps.changed.outputs.any_changed != 'true'
+        run: npm run lint:ci -- --cache --cache-location .eslintcache
+
   tests:
-    name: Lint & tests (unit + e2e)
+    name: Tests
     runs-on: ubuntu-latest
 
     services:
@@ -54,56 +97,36 @@ jobs:
       NODE_ENV: test
 
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      - name: Use Node.js ${{ env.NODE_VERSION }}
-        uses: actions/setup-node@v4
+      - uses: actions/setup-node@v4
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: 'npm'
           cache-dependency-path: package-lock.json
 
-      - name: Install dependencies
-        run: npm ci
-
-      - name: Generate Prisma Client
-        run: npx prisma generate
-
-      - name: Run Prisma migrations
-        run: npx prisma migrate deploy
-
-      - name: Lint
-        run: npm run lint
-
-      - name: Run unit tests
-        run: npm test
-
-      - name: Run e2e tests
-        run: npm run test:e2e
+      - run: npm ci
+      - run: npx prisma generate
+      - run: npx prisma migrate deploy
+      - run: npm test
+      - run: npm run test:e2e
 
   build:
-    name: Build & push Docker image
-    needs: tests
+    name: Build & push
+    needs: [lint, tests]
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     permissions:
       packages: write
       contents: read
-
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-
-      - name: Login to GHCR
-        uses: docker/login-action@v3
+      - uses: actions/checkout@v4
+      - uses: docker/login-action@v3
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Build and push image
-        uses: docker/build-push-action@v5
+      - uses: docker/build-push-action@v5
         with:
           context: .
           file: ./Dockerfile
@@ -113,27 +136,20 @@ jobs:
             ${{ env.IMAGE_NAME }}:${{ github.sha }}
 
   deploy:
-    name: Deploy to production
+    name: Deploy
     needs: build
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
-
     steps:
-      - name: SSH Deploy
-        uses: appleboy/ssh-action@v1.0.3
+      - uses: appleboy/ssh-action@v1.0.3
         with:
           host: ${{ secrets.PRODUCTION_HOST }}
           username: ${{ secrets.PRODUCTION_USERNAME }}
           key: ${{ secrets.PRODUCTION_SSH_KEY }}
           script: |
             cd /root/project-core
-
             echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
-
             docker pull ${{ env.IMAGE_NAME }}:${{ github.sha }}
-
             CORE_TAG=${{ github.sha }} docker compose up -d --force-recreate --no-deps core
-
             docker compose exec -T core npx prisma migrate deploy
-
             docker image prune -f
