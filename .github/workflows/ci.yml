@@ -56,25 +56,14 @@ jobs:
           username: ${{ secrets.PRODUCTION_USERNAME }}
           key: ${{ secrets.PRODUCTION_SSH_KEY }}
           script: |
-            set -e
             cd /root/project-core
-
-            # ۱. لاگین
             echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
 
-            # ۲. کشیدن دقیق آخرین نسخه
-            docker compose pull core
+            docker pull ghcr.io/mhfarsiii/moramor-core:${{ github.sha }}
 
-            # ۳. ریستارت کردن سرویس با حذف کانتینر قبلی
-            # استفاده از --no-deps باعث می‌شود دیتابیس الکی ریستارت نشود
-            docker compose up -d --force-recreate --no-deps core
+            CORE_TAG=${{ github.sha }} docker compose up -d --force-recreate --no-deps core
 
-            # ۴. صبر کردن برای بالا آمدن کانتینر قبل از مایگریشن
-            echo "Waiting for core to be ready..."
-            sleep 15
-
-            # ۵. اجرای مایگریشن
+            # اجرای مایگریشن
             docker compose exec -T core npx prisma migrate deploy
 
-            # ۶. پاکسازی
             docker image prune -f
