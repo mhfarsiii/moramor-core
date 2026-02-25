@@ -81,7 +81,6 @@ export class MailService {
     }
   }
 
-
   /**
    * Send OTP code email
    * @param email - User's email address
@@ -102,9 +101,7 @@ export class MailService {
         if (!mailUser) missingConfigs.push('MAIL_USER');
         if (!mailPass) missingConfigs.push('MAIL_PASS');
 
-        this.logger.error(
-          `Email configuration is missing: ${missingConfigs.join(', ')}`,
-        );
+        this.logger.error(`Email configuration is missing: ${missingConfigs.join(', ')}`);
         throw new Error(
           `پیکربندی ایمیل ناقص است. متغیرهای محیطی زیر تنظیم نشده‌اند: ${missingConfigs.join(', ')}`,
         );
@@ -133,8 +130,7 @@ export class MailService {
 
       this.logger.log(`OTP code email sent successfully to ${email}`);
     } catch (error) {
-      const errorMessage =
-        error instanceof Error ? error.message : 'خطای نامشخص در ارسال ایمیل';
+      const errorMessage = error instanceof Error ? error.message : 'خطای نامشخص در ارسال ایمیل';
       this.logger.error(
         `Failed to send OTP code email to ${email}. Error: ${errorMessage}`,
         error instanceof Error ? error.stack : undefined,

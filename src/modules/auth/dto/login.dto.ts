@@ -26,4 +26,3 @@ export class LoginDto {
   @MinLength(6, { message: 'رمز عبور باید حداقل ۶ کاراکتر باشد' })
   password: string;
 }
-

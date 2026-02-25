@@ -20,7 +20,3 @@ export class VerifyCodeDto {
   @Matches(/^\d{6}$/, { message: 'کد باید فقط شامل اعداد باشد' })
   code: string;
 }
-
-
-
-

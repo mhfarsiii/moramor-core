@@ -48,11 +48,6 @@ jobs:
         with:
           files: |
             **/*.ts
-          dirs: |
-            src
-            apps
-            libs
-            test
 
       - name: Lint (changed only)
         if: steps.changed.outputs.any_changed == 'true'

@@ -29,7 +29,8 @@ export class AuthController {
   @Post('login')
   @ApiOperation({
     summary: 'ورود به سیستم با ایمیل و رمز عبور (فقط پنل ادمین)',
-    description: 'این مسیر فقط برای کاربران با نقش ADMIN یا SUPER_ADMIN فعال است. سایر کاربران باید از OTP استفاده کنند.',
+    description:
+      'این مسیر فقط برای کاربران با نقش ADMIN یا SUPER_ADMIN فعال است. سایر کاربران باید از OTP استفاده کنند.',
   })
   @ApiResponse({
     status: 200,

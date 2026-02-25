@@ -28,4 +28,3 @@ export class ResetPasswordDto {
   @MaxLength(128, { message: 'رمز عبور نمی‌تواند بیش از ۱۲۸ کاراکتر باشد' })
   newPassword: string;
 }
-

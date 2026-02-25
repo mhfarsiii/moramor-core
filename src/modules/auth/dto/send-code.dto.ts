@@ -10,4 +10,3 @@ export class SendCodeDto {
   @IsNotEmpty({ message: 'ایمیل الزامی است' })
   email: string;
 }
-
