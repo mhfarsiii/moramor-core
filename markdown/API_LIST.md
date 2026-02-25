@@ -18,18 +18,19 @@ Authorization: Bearer YOUR_ACCESS_TOKEN
 
 ## 🔐 احراز هویت (Auth)
 
+> **روش ورود کاربران فروشگاه:** فقط از طریق **OTP ایمیل** (`/auth/send-code` و `/auth/verify-code`).  
+> **پنل ادمین:** علاوه بر OTP می‌تواند از **ایمیل/پسورد** (`/auth/login`) و فراموشی رمز عبور استفاده کند.
+
 | Method | Endpoint | Auth | Description |
 |--------|----------|------|-------------|
-| POST | `/auth/register` | ❌ | ثبت‌نام کاربر جدید |
-| POST | `/auth/login` | ❌ | ورود کاربر |
+| POST | `/auth/send-code` | ❌ | ارسال کد تأیید ۶ رقمی به ایمیل برای ورود/ثبت‌نام |
+| POST | `/auth/verify-code` | ❌ | تأیید کد OTP و دریافت accessToken و refreshToken |
+| POST | `/auth/login` | ❌ | ورود با ایمیل/پسورد (مخصوص پنل ادمین) |
+| POST | `/auth/forgot-password` | ❌ | درخواست بازیابی رمز عبور (برای حساب‌های دارای پسورد) |
+| POST | `/auth/reset-password` | ❌ | تغییر رمز عبور با توکن بازیابی |
 | POST | `/auth/refresh` | ❌ | تمدید توکن با Refresh Token |
 | POST | `/auth/logout` | ✅ | خروج از حساب کاربری |
 | GET | `/auth/me` | ✅ | دریافت اطلاعات کاربر جاری |
-| GET | `/auth/google` | ❌ | ورود با Google OAuth |
-| GET | `/auth/google/callback` | ❌ | Google OAuth Callback |
-| POST | `/auth/forgot-password` | ❌ | درخواست بازیابی رمز عبور |
-| POST | `/auth/reset-password` | ❌ | بازیابی رمز عبور با توکن |
-| POST | `/auth/verify-email` | ❌ | تأیید ایمیل کاربر |
 
 ---
 

@@ -8,7 +8,7 @@ import { ApiProperty } from '@nestjs/swagger';
 export class ForgotPasswordDto {
   @ApiProperty({
     description: 'ایمیل کاربر برای بازیابی رمز عبور',
-    example: 'user@example.com',
+    example: 'admin@moramor.com',
     type: String,
   })
   @IsEmail({}, { message: 'لطفاً یک ایمیل معتبر وارد کنید' })

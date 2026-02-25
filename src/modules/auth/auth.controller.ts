@@ -1,9 +1,6 @@
-import { Controller, Post, Body, Get, UseGuards, Req, Res } from '@nestjs/common';
+import { Controller, Post, Body, Get } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from '@nestjs/swagger';
 import { Throttle } from '@nestjs/throttler';
-import { AuthGuard } from '@nestjs/passport';
-import { Response } from 'express';
-import { ConfigService } from '@nestjs/config';
 import { AuthService } from './auth.service';
 import { RefreshTokenDto } from './dto/refresh-token.dto';
 import { LoginDto } from './dto/login.dto';
@@ -17,10 +14,7 @@ import { CurrentUser } from '../../common/decorators/current-user.decorator';
 @ApiTags('Auth')
 @Controller('auth')
 export class AuthController {
-  constructor(
-    private readonly authService: AuthService,
-    private readonly configService: ConfigService,
-  ) {}
+  constructor(private readonly authService: AuthService) {}
 
   @Public()
   @Post('refresh')
@@ -33,7 +27,10 @@ export class AuthController {
 
   @Public()
   @Post('login')
-  @ApiOperation({ summary: 'ورود به سیستم با ایمیل و رمز عبور' })
+  @ApiOperation({
+    summary: 'ورود به سیستم با ایمیل و رمز عبور (فقط پنل ادمین)',
+    description: 'این مسیر فقط برای کاربران با نقش ADMIN یا SUPER_ADMIN فعال است. سایر کاربران باید از OTP استفاده کنند.',
+  })
   @ApiResponse({
     status: 200,
     description: 'ورود با موفقیت انجام شد',
@@ -55,7 +52,7 @@ export class AuthController {
       },
     },
   })
-  @ApiResponse({ status: 401, description: 'ایمیل یا رمز عبور اشتباه است' })
+  @ApiResponse({ status: 401, description: 'ورود با رمز عبور مجاز نیست یا ایمیل/رمز اشتباه است' })
   @ApiResponse({ status: 400, description: 'داده‌های ورودی نامعتبر است' })
   async login(@Body() loginDto: LoginDto) {
     return this.authService.login(loginDto.email, loginDto.password);
@@ -78,52 +75,15 @@ export class AuthController {
   }
 
   @Public()
-  @Get('google')
-  @UseGuards(AuthGuard('google'))
-  @ApiOperation({ summary: 'ورود با Google OAuth' })
-  async googleAuth() {
-    // Guard redirects to Google
-  }
-
-  @Public()
-  @Get('google/callback')
-  @UseGuards(AuthGuard('google'))
-  @ApiOperation({ summary: 'Google OAuth Callback' })
-  async googleAuthCallback(@Req() req, @Res() res: Response) {
-    try {
-      // Authenticate user and get tokens
-      const authData = await this.authService.googleLogin(req.user);
-
-      // Get frontend URL from environment
-      const frontendUrl = this.configService.get<string>('FRONTEND_URL') || 'http://localhost:3001';
-
-      // Encode tokens for URL safety
-      const accessToken = encodeURIComponent(authData.accessToken);
-      const refreshToken = encodeURIComponent(authData.refreshToken);
-      const userId = encodeURIComponent(authData.user.id);
-
-      // Redirect to frontend with tokens as query parameters
-      const redirectUrl = `${frontendUrl}/auth/callback?accessToken=${accessToken}&refreshToken=${refreshToken}&userId=${userId}`;
-
-      return res.redirect(redirectUrl);
-    } catch (error) {
-      // If authentication fails, redirect to error page
-      const frontendUrl = this.configService.get<string>('FRONTEND_URL') || 'http://localhost:3001';
-      return res.redirect(
-        `${frontendUrl}/auth/error?message=${encodeURIComponent('خطا در احراز هویت با Google')}`,
-      );
-    }
-  }
-
-  @Public()
   @Post('forgot-password')
   @ApiOperation({
     summary: 'درخواست بازیابی رمز عبور',
-    description: 'ارسال لینک بازیابی رمز عبور به ایمیل کاربر',
+    description:
+      'ارسال لینک بازیابی رمز عبور به ایمیل کاربر. فقط برای حساب‌هایی که پسورد دارند (مانند ادمین).',
   })
   @ApiResponse({
     status: 200,
-    description: 'لینک بازیابی ارسال شد',
+    description: 'لینک بازیابی ارسال شد (در صورت وجود ایمیل)',
     schema: {
       type: 'object',
       properties: {
@@ -146,7 +106,7 @@ export class AuthController {
   @Post('reset-password')
   @ApiOperation({
     summary: 'بازیابی رمز عبور با توکن',
-    description: 'تغییر رمز عبور با استفاده از توکن دریافتی از ایمیل',
+    description: 'تغییر رمز عبور با استفاده از توکن دریافتی از ایمیل بازیابی رمز عبور',
   })
   @ApiResponse({
     status: 200,

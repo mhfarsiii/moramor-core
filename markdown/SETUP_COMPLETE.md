@@ -30,12 +30,13 @@
 
 ---
 
-## 🔐 اطلاعات ورود پیش‌فرض
+## 🔐 ورود با OTP (کاربر ادمین پیش‌فرض)
 
 **کاربر ادمین:**
 - ایمیل: `admin@moramor.com`
-- رمز عبور: `Admin@123456`
 - نقش: SUPER_ADMIN
+
+ورود به پنل فقط از طریق OTP ایمیل انجام می‌شود (هیچ مسیری برای ورود با پسورد فعال نیست).
 
 ---
 
@@ -64,11 +65,16 @@
 4. پاسخ سرور نمایش داده می‌شود
 
 ### روش 2: استفاده از cURL یا Postman
-مثال برای ورود:
+مثال برای ورود با OTP:
 ```bash
-curl -X POST http://localhost:3000/api/v1/auth/login \
+curl -X POST http://localhost:3000/api/v1/auth/send-code \
   -H "Content-Type: application/json" \
-  -d '{"email":"admin@moramor.com","password":"Admin@123456"}'
+  -d '{"email":"admin@moramor.com"}'
+
+# بعد از دریافت کد ۶ رقمی:
+curl -X POST http://localhost:3000/api/v1/auth/verify-code \
+  -H "Content-Type: application/json" \
+  -d '{"email":"admin@moramor.com","code":"123456"}'
 ```
 
 ---
@@ -76,8 +82,8 @@ curl -X POST http://localhost:3000/api/v1/auth/login \
 ## 📋 API Endpoints اصلی
 
 ### احراز هویت (Auth)
-- `POST /api/v1/auth/register` - ثبت‌نام
-- `POST /api/v1/auth/login` - ورود
+- `POST /api/v1/auth/send-code` - ارسال کد تأیید به ایمیل
+- `POST /api/v1/auth/verify-code` - تأیید کد و دریافت توکن‌ها
 - `POST /api/v1/auth/refresh` - تمدید توکن
 - `GET /api/v1/auth/me` - اطلاعات کاربر جاری
 

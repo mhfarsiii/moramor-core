@@ -93,103 +93,50 @@ export class AuthService {
   }
 
   /**
-   * Authenticate user with email and password
-   * @param email - User email address
-   * @param password - User password
-   * @returns Promise with user data and tokens
+   * Authenticate user with email and password.
+   * This flow is intended only for admin panel users (ADMIN/SUPER_ADMIN).
    */
   async login(email: string, password: string) {
-    // Normalize email to lowercase for consistency
     const normalizedEmail = email.toLowerCase().trim();
 
-    // Find user by email
     const user = await this.prisma.user.findUnique({
       where: { email: normalizedEmail },
     });
 
-    // Check if user exists
     if (!user) {
       throw new UnauthorizedException('ایمیل یا رمز عبور اشتباه است');
     }
 
-    // Check if user has a password (not OAuth-only user)
+    // Only allow password login for admin roles
+    if (user.role !== 'ADMIN' && user.role !== 'SUPER_ADMIN') {
+      throw new UnauthorizedException(
+        'ورود با رمز عبور فقط برای پنل ادمین مجاز است. لطفاً از ورود با کد یک‌بارمصرف استفاده کنید.',
+      );
+    }
+
     if (!user.password) {
       throw new UnauthorizedException(
         'این حساب کاربری با رمز عبور قابل ورود نیست. لطفاً از روش دیگری استفاده کنید',
       );
     }
 
-    // Check if user is active
     if (!user.isActive) {
       throw new UnauthorizedException('حساب کاربری شما غیرفعال شده است');
     }
 
-    // Verify password
     const isPasswordValid = await bcrypt.compare(password, user.password);
     if (!isPasswordValid) {
       throw new UnauthorizedException('ایمیل یا رمز عبور اشتباه است');
     }
 
-    // Generate JWT tokens
     const tokens = await this.generateTokens(user.id, user.email, user.role);
 
-    // Store refresh token
-    await this.storeRefreshToken(user.id, tokens.refreshToken);
-
-    // Remove password from response
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    const { password: _, ...userWithoutPassword } = user;
-
-    this.logger.log(`User logged in successfully: ${normalizedEmail}`);
-
-    return {
-      user: userWithoutPassword,
-      ...tokens,
-    };
-  }
-
-  async googleLogin(profile: any) {
-    const { email, displayName, id: googleId } = profile;
-
-    // Normalize email to lowercase for consistency
-    const normalizedEmail = email.toLowerCase().trim();
-
-    // Find or create user
-    let user = await this.prisma.user.findUnique({
-      where: { email: normalizedEmail },
-    });
-
-    if (!user) {
-      user = await this.prisma.user.create({
-        data: {
-          email: normalizedEmail,
-          name: displayName,
-          googleId,
-          emailVerified: true,
-        },
-      });
-    } else if (!user.googleId) {
-      // Link Google account to existing user (if user registered with email/password first)
-      user = await this.prisma.user.update({
-        where: { id: user.id },
-        data: { googleId },
-      });
-    }
-
-    // Check if user is active
-    if (!user.isActive) {
-      throw new UnauthorizedException('حساب کاربری شما غیرفعال شده است');
-    }
-
-    // Email verification is optional - users can login with Google OAuth
-    // regardless of email verification status
-
-    // Generate tokens
-    const tokens = await this.generateTokens(user.id, user.email, user.role);
     await this.storeRefreshToken(user.id, tokens.refreshToken);
 
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const { password: _, ...userWithoutPassword } = user;
+
+    this.logger.log(`Admin user logged in successfully with password: ${normalizedEmail}`);
 
     return {
       user: userWithoutPassword,
@@ -198,47 +145,46 @@ export class AuthService {
   }
 
   /**
-   * Handle forgot password request
-   * @param forgotPasswordDto - Contains user email
-   * @returns Promise with success message
+   * Handle forgot password request (primarily for admin accounts).
    */
   async forgotPassword(forgotPasswordDto: ForgotPasswordDto) {
     const { email } = forgotPasswordDto;
-
-    // Normalize email to lowercase for consistency
     const normalizedEmail = email.toLowerCase().trim();
 
     try {
-      // Check if user exists
       const user = await this.prisma.user.findUnique({
         where: { email: normalizedEmail },
       });
 
-      // For security, always return success message
-      // This prevents email enumeration attacks
+      // Always return generic success message to avoid email enumeration
       if (!user) {
         this.logger.warn(`Password reset requested for non-existent email: ${normalizedEmail}`);
         return { message: 'اگر ایمیل در سیستم موجود باشد، لینک بازیابی ارسال شد' };
       }
 
-      // Check if user has password (not OAuth only)
+      // Only meaningful for accounts with password (typically admin)
       if (!user.password) {
-        this.logger.warn(`Password reset requested for OAuth-only user: ${normalizedEmail}`);
+        this.logger.warn(`Password reset requested for user without password: ${normalizedEmail}`);
         return { message: 'اگر ایمیل در سیستم موجود باشد، لینک بازیابی ارسال شد' };
       }
 
-      // Delete existing reset tokens for this user
+      // Optional: restrict to admin roles
+      if (user.role !== 'ADMIN' && user.role !== 'SUPER_ADMIN') {
+        this.logger.warn(
+          `Password reset requested for non-admin user via password flow: ${normalizedEmail}`,
+        );
+        return { message: 'اگر ایمیل در سیستم موجود باشد، لینک بازیابی ارسال شد' };
+      }
+
       await this.prisma.passwordResetToken.deleteMany({
         where: { userId: user.id },
       });
 
-      // Generate new reset token
       const resetToken = randomBytes(32).toString('hex');
       const expiresAt = this._parseExpirationToDate(
         this.configService.get<string>('PASSWORD_RESET_EXPIRATION', '2h'),
       );
 
-      // Store reset token
       await this.prisma.passwordResetToken.create({
         data: {
           token: resetToken,
@@ -247,7 +193,6 @@ export class AuthService {
         },
       });
 
-      // Send reset email
       await this.mailService.sendPasswordResetEmail(user.email, resetToken, user.name);
 
       this.logger.log(`Password reset email sent to: ${email}`);
@@ -260,15 +205,12 @@ export class AuthService {
   }
 
   /**
-   * Handle password reset with token
-   * @param resetPasswordDto - Contains reset token and new password
-   * @returns Promise with success message
+   * Handle password reset with token.
    */
   async resetPassword(resetPasswordDto: ResetPasswordDto) {
     const { token, newPassword } = resetPasswordDto;
 
     try {
-      // Find reset token
       const resetToken = await this.prisma.passwordResetToken.findUnique({
         where: { token },
         include: { user: true },
@@ -278,37 +220,34 @@ export class AuthService {
         throw new BadRequestException('توکن نامعتبر است');
       }
 
-      // Check if token is expired
       if (new Date() > resetToken.expiresAt) {
-        // Clean up expired token
         await this.prisma.passwordResetToken.delete({
           where: { id: resetToken.id },
         });
         throw new BadRequestException('توکن منقضی شده است');
       }
 
-      // Check if user still exists and is active
+      // Restrict password reset primarily to admin accounts
+      if (resetToken.user.role !== 'ADMIN' && resetToken.user.role !== 'SUPER_ADMIN') {
+        throw new BadRequestException('بازیابی رمز عبور برای این حساب از طریق این روش مجاز نیست');
+      }
+
       if (!resetToken.user.isActive) {
         throw new BadRequestException('حساب کاربری غیرفعال است');
       }
 
-      // Hash new password
       const hashedPassword = await bcrypt.hash(newPassword, 12);
 
-      // Update user password and clean up reset token in a transaction
       await this.prisma.$transaction(async (tx) => {
-        // Update password
         await tx.user.update({
           where: { id: resetToken.userId },
           data: { password: hashedPassword },
         });
 
-        // Delete reset token
         await tx.passwordResetToken.delete({
           where: { id: resetToken.id },
         });
 
-        // Delete all refresh tokens for security
         await tx.refreshToken.deleteMany({
           where: { userId: resetToken.userId },
         });

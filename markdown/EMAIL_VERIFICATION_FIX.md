@@ -83,38 +83,28 @@ curl -X POST http://localhost:3000/api/v1/auth/resend-verification \
   }
   ```
 
-### 3. تأیید ایمیل
+### 3. ورود بعد از تأیید ایمیل (با OTP)
 
-بعد از دریافت ایمیل تأیید:
+بعد از تأیید ایمیل، ورود فقط از طریق OTP انجام می‌شود:
 
-#### درخواست:
 ```http
-POST /api/v1/auth/verify-email
+POST /api/v1/auth/send-code
 Content-Type: application/json
 
 {
-  "token": "verification-token-from-email"
+  "email": "user@example.com"
 }
 ```
 
-#### پاسخ موفق:
-```json
-{
-  "message": "ایمیل شما با موفقیت تأیید شد"
-}
-```
-
-### 4. ورود بعد از تأیید ایمیل
-
-بعد از تأیید ایمیل، می‌توانید وارد شوید:
+و سپس:
 
 ```http
-POST /api/v1/auth/login
+POST /api/v1/auth/verify-code
 Content-Type: application/json
 
 {
   "email": "user@example.com",
-  "password": "your-password"
+  "code": "123456"
 }
 ```
 

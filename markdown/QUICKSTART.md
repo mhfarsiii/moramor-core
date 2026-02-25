@@ -92,29 +92,40 @@ make dev
 - ❤️ **Health Check:** http://localhost:3000/health
 - 💾 **MinIO Console:** http://localhost:9001 (admin/minioadmin)
 
-### کاربر پیش‌فرض
+### ورود با OTP (کاربر پیش‌فرض)
 
-برای تست، با این حساب وارد شوید:
+برای تست، می‌توانید با ایمیل زیر و جریان OTP وارد شوید:
 
 ```
 Email: admin@moramor.com
-Password: Admin@123456
 ```
 
 ## 🧪 تست API
 
-### ورود به سیستم
+### 1. ارسال کد OTP
 
 ```bash
-curl -X POST http://localhost:3000/api/v1/auth/login \
+curl -X POST http://localhost:3000/api/v1/auth/send-code \
   -H "Content-Type: application/json" \
   -d '{
-    "email": "admin@moramor.com",
-    "password": "Admin@123456"
+    "email": "admin@moramor.com"
   }'
 ```
 
-پاسخ شامل `accessToken` است که برای درخواست‌های بعدی نیاز دارید.
+### 2. تأیید کد و دریافت توکن
+
+پس از دریافت کد ۶ رقمی (در محیط واقعی از ایمیل، در دیو ممکن است از لاگ/console)، آن را در درخواست زیر استفاده کنید:
+
+```bash
+curl -X POST http://localhost:3000/api/v1/auth/verify-code \
+  -H "Content-Type: application/json" \
+  -d '{
+    "email": "admin@moramor.com",
+    "code": "123456"
+  }'
+```
+
+پاسخ شامل `accessToken` و `refreshToken` است که برای درخواست‌های بعدی نیاز دارید.
 
 ### دریافت محصولات
 

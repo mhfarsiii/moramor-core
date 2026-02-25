@@ -7,7 +7,6 @@ import { AuthController } from './auth.controller';
 import { MailService } from './mail.service';
 import { JwtStrategy } from './strategies/jwt.strategy';
 import { JwtRefreshStrategy } from './strategies/jwt-refresh.strategy';
-import { GoogleStrategy } from './strategies/google.strategy';
 import { UsersModule } from '../users/users.module';
 
 @Module({
@@ -26,7 +25,7 @@ import { UsersModule } from '../users/users.module';
     }),
   ],
   controllers: [AuthController],
-  providers: [AuthService, MailService, JwtStrategy, JwtRefreshStrategy, GoogleStrategy],
+  providers: [AuthService, MailService, JwtStrategy, JwtRefreshStrategy],
   exports: [AuthService, MailService],
 })
 export class AuthModule {}

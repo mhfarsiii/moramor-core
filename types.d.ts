@@ -106,15 +106,8 @@ export interface UserProfileResponse extends UserProfile {}
 // AUTH TYPES
 // =============================================================================
 
-export interface RegisterRequest {
-  name: string;
-  email: string;
-  password: string;
-  phone?: string;
-}
-
 export interface LoginRequest {
-  email: string;
+  email: EmailString;
   password: string;
 }
 
@@ -122,17 +115,27 @@ export interface RefreshTokenRequest {
   refreshToken: string;
 }
 
+export interface AuthTokens {
+  accessToken: string;
+  refreshToken: string;
+}
+
+export interface OtpSendCodeRequest {
+  email: EmailString;
+}
+
+export interface OtpVerifyCodeRequest {
+  email: EmailString;
+  code: string;
+}
+
 export interface ForgotPasswordRequest {
-  email: string;
+  email: EmailString;
 }
 
 export interface ResetPasswordRequest {
   token: string;
   newPassword: string;
-}
-
-export interface VerifyEmailRequest {
-  token: string;
 }
 
 export interface AuthResponse {
@@ -141,13 +144,16 @@ export interface AuthResponse {
   refreshToken: string;
 }
 
-export interface RegisterResponse {
-  message: string;
-  user: User;
-}
-
 export interface LogoutResponse {
   message: string;
+}
+
+export interface OtpSendCodeResponse {
+  message: string;
+}
+
+export interface OtpVerifyCodeResponse extends AuthResponse {
+  isNewUser: boolean;
 }
 
 export interface ForgotPasswordResponse {
@@ -157,12 +163,6 @@ export interface ForgotPasswordResponse {
 export interface ResetPasswordResponse {
   message: string;
 }
-
-export interface VerifyEmailResponse {
-  message: string;
-}
-
-export interface GoogleAuthResponse extends AuthResponse {}
 
 // =============================================================================
 // CATEGORY TYPES
@@ -630,16 +630,14 @@ export type PostalCodeString = string; // Iranian postal code format
 // =============================================================================
 
 // Auth endpoints
-export type AuthRegisterEndpoint = '/auth/register';
 export type AuthLoginEndpoint = '/auth/login';
+export type AuthSendCodeEndpoint = '/auth/send-code';
+export type AuthVerifyCodeEndpoint = '/auth/verify-code';
+export type AuthForgotPasswordEndpoint = '/auth/forgot-password';
+export type AuthResetPasswordEndpoint = '/auth/reset-password';
 export type AuthRefreshEndpoint = '/auth/refresh';
 export type AuthLogoutEndpoint = '/auth/logout';
 export type AuthMeEndpoint = '/auth/me';
-export type AuthGoogleEndpoint = '/auth/google';
-export type AuthGoogleCallbackEndpoint = '/auth/google/callback';
-export type AuthForgotPasswordEndpoint = '/auth/forgot-password';
-export type AuthResetPasswordEndpoint = '/auth/reset-password';
-export type AuthVerifyEmailEndpoint = '/auth/verify-email';
 
 // User endpoints
 export type UserProfileEndpoint = '/users/profile';
@@ -714,13 +712,25 @@ export type HealthCheckEndpoint = '/health';
 
 export interface ApiEndpoints {
   // Auth
-  'POST /auth/register': {
-    body: RegisterRequest;
-    response: RegisterResponse;
-  };
   'POST /auth/login': {
     body: LoginRequest;
     response: AuthResponse;
+  };
+  'POST /auth/send-code': {
+    body: OtpSendCodeRequest;
+    response: OtpSendCodeResponse;
+  };
+  'POST /auth/verify-code': {
+    body: OtpVerifyCodeRequest;
+    response: OtpVerifyCodeResponse;
+  };
+  'POST /auth/forgot-password': {
+    body: ForgotPasswordRequest;
+    response: ForgotPasswordResponse;
+  };
+  'POST /auth/reset-password': {
+    body: ResetPasswordRequest;
+    response: ResetPasswordResponse;
   };
   'POST /auth/refresh': {
     body: RefreshTokenRequest;
@@ -732,24 +742,6 @@ export interface ApiEndpoints {
   };
   'GET /auth/me': {
     response: User;
-  };
-  'GET /auth/google': {
-    response: void;
-  };
-  'GET /auth/google/callback': {
-    response: GoogleAuthResponse;
-  };
-  'POST /auth/forgot-password': {
-    body: ForgotPasswordRequest;
-    response: ForgotPasswordResponse;
-  };
-  'POST /auth/reset-password': {
-    body: ResetPasswordRequest;
-    response: ResetPasswordResponse;
-  };
-  'POST /auth/verify-email': {
-    body: VerifyEmailRequest;
-    response: VerifyEmailResponse;
   };
 
   // Users
@@ -994,11 +986,18 @@ export type {
   UserProfile,
   UserListResponse,
   UserProfileResponse,
-  AuthResponse,
-  RegisterResponse,
+  LoginRequest,
   AuthTokens,
-  VerifyEmailRequest,
-  VerifyEmailResponse,
+  OtpSendCodeRequest,
+  OtpVerifyCodeRequest,
+  AuthResponse,
+  LogoutResponse,
+  OtpSendCodeResponse,
+  OtpVerifyCodeResponse,
+  ForgotPasswordRequest,
+  ResetPasswordRequest,
+  ForgotPasswordResponse,
+  ResetPasswordResponse,
   Category,
   CategoryResponse,
   CategoryListResponse,

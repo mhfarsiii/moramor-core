@@ -17,19 +17,18 @@ Production:  https://api.moramor.com/api/v1
 Authorization: Bearer YOUR_ACCESS_TOKEN
 ```
 
-### دریافت Token
+### جریان ورود با OTP ایمیل
 
-**ثبت‌نام:**
+در این نسخه، تنها روش ورود و ثبت‌نام، استفاده از **کد یک‌بارمصرف (OTP)** است. اگر کاربر وجود نداشته باشد، در اولین ورود با OTP به صورت خودکار ساخته می‌شود.
+
+#### 1. ارسال کد به ایمیل
 
 ```http
-POST /auth/register
+POST /auth/send-code
 Content-Type: application/json
 
 {
-  "name": "علی محمدی",
-  "email": "ali@example.com",
-  "password": "Password@123",
-  "phone": "09123456789"
+  "email": "ali@example.com"
 }
 ```
 
@@ -37,30 +36,42 @@ Content-Type: application/json
 
 ```json
 {
-  "user": {
-    "id": "clr1234...",
-    "name": "علی محمدی",
-    "email": "ali@example.com",
-    "role": "USER"
-  },
-  "accessToken": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
-  "refreshToken": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+  "message": "کد تأیید به ایمیل شما ارسال شد"
 }
 ```
 
-**ورود:**
+#### 2. تأیید کد و دریافت توکن‌ها
 
 ```http
-POST /auth/login
+POST /auth/verify-code
 Content-Type: application/json
 
 {
   "email": "ali@example.com",
-  "password": "Password@123"
+  "code": "123456"
 }
 ```
 
-**تمدید Token:**
+**پاسخ موفق:**
+
+```json
+{
+  "user": {
+    "id": "clr1234...",
+    "name": "علی محمدی",
+    "email": "ali@example.com",
+    "role": "USER",
+    "emailVerified": true
+  },
+  "accessToken": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+  "refreshToken": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+  "isNewUser": false
+}
+```
+
+فیلد `isNewUser` مشخص می‌کند که این اولین ورود کاربر است یا خیر.
+
+### تمدید Token
 
 ```http
 POST /auth/refresh
