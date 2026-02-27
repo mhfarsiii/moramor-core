@@ -6,7 +6,10 @@ on:
     paths:
       - 'apps/core/**'        # فقط تغییرات پوشه کور
       - 'prisma/**'           # تغییرات دیتابیس
+      - 'src/**'
       - '.github/workflows/ci.yml'
+      - 'package.json'        # پیشنهاد: تغییرات پکیج‌ها هم باعث اجرای پایپ‌لاین شود
+      - 'Dockerfile'
 
 jobs:
   lint-and-test:
