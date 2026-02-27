@@ -330,4 +330,24 @@ export class ProductsService {
 
     return product.stock >= quantity;
   }
+
+  async updateBestSellerStatus(id: string, isBestSeller: boolean) {
+    const product = await this.prisma.product.findUnique({
+      where: { id },
+    });
+
+    if (!product) {
+      throw new NotFoundException('محصول یافت نشد');
+    }
+
+    return this.prisma.product.update({
+      where: { id },
+      data: {
+        isBestSeller,
+      } as any,
+      include: {
+        category: true,
+      },
+    });
+  }
 }

@@ -137,8 +137,9 @@ model Product {
   weight     Float? // in grams
   dimensions Json? // { length, width, height }
 
-  isFeatured Boolean @default(false)
-  isActive   Boolean @default(true)
+  isFeatured   Boolean @default(false)
+  isBestSeller Boolean @default(false)
+  isActive     Boolean @default(true)
 
   // Relations
   reviews     Review[]
@@ -157,6 +158,7 @@ model Product {
   @@index([slug])
   @@index([categoryId])
   @@index([isFeatured])
+  @@index([isBestSeller])
   @@index([price])
   @@map("products")
 }

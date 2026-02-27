@@ -82,6 +82,11 @@ export class CreateProductDto {
   @IsBoolean()
   isFeatured?: boolean;
 
+  @ApiProperty({ example: false, required: false })
+  @IsOptional()
+  @IsBoolean()
+  isBestSeller?: boolean;
+
   @ApiProperty({ example: true, required: false })
   @IsOptional()
   @IsBoolean()
