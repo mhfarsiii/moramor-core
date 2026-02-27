@@ -137,6 +137,7 @@ model Product {
 
   // Relations
   reviews     Review[]
+  collections ProductOnCollection[]
   wishlist    Wishlist[]
   cartItems   CartItem[]
   orderItems  OrderItem[]
@@ -153,6 +154,42 @@ model Product {
   @@index([isFeatured])
   @@index([price])
   @@map("products")
+}
+
+// ==================== Collections ====================
+
+model Collection {
+  id          String                 @id @default(cuid())
+  title       String
+  slug        String                 @unique
+  description String?                @db.Text
+  coverImage  String
+  isActive    Boolean                @default(true)
+
+  products    ProductOnCollection[]
+
+  createdAt   DateTime               @default(now())
+  updatedAt   DateTime               @updatedAt
+
+  @@index([slug])
+  @@map("collections")
+}
+
+model ProductOnCollection {
+  id           String     @id @default(cuid())
+  collectionId String
+  productId    String
+
+  collection   Collection @relation(fields: [collectionId], references: [id], onDelete: Cascade)
+  product      Product    @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  sortOrder    Int        @default(0)
+  createdAt    DateTime   @default(now())
+
+  @@unique([collectionId, productId])
+  @@index([collectionId])
+  @@index([productId])
+  @@map("product_collections")
 }
 
 // ==================== Cart ====================

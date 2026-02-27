@@ -22,6 +22,7 @@ import { WishlistModule } from './modules/wishlist/wishlist.module';
 import { ReviewsModule } from './modules/reviews/reviews.module';
 import { UploadModule } from './modules/upload/upload.module';
 import { PaymentModule } from './modules/payment/payment.module';
+import { CollectionsModule } from './modules/collections/collections.module';
 import { HealthController } from './health/health.controller';
 
 @Module({
@@ -115,6 +116,7 @@ import { HealthController } from './health/health.controller';
     ReviewsModule,
     UploadModule,
     PaymentModule,
+    CollectionsModule,
   ],
   controllers: [HealthController],
   providers: [
