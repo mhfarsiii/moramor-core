@@ -191,7 +191,7 @@ export class AuthController {
         },
         isNewUser: {
           type: 'boolean',
-          description: 'آیا کاربر جدید است یا خیر',
+          description: '?آیا کاربر جدید است یا خیر',
           example: false,
         },
       },
