@@ -142,6 +142,44 @@ export class ProductsService {
     };
   }
 
+  async getFlashSales() {
+    const now = new Date();
+
+    const flashSales = await this.prisma.product.findMany({
+      where: {
+        isActive: true,
+        discountPrice: { not: null },
+        flashSaleStartDate: { lte: now },
+        flashSaleEndDate: { gte: now },
+      },
+      select: {
+        id: true,
+        name: true,
+        slug: true,
+        price: true,
+        discountPrice: true,
+        flashSaleStartDate: true,
+        flashSaleEndDate: true,
+        images: true,
+        category: {
+          select: {
+            id: true,
+            name: true,
+            slug: true,
+          },
+        },
+        stock: true,
+      },
+      orderBy: {
+        flashSaleEndDate: 'asc',
+      },
+    });
+
+    return {
+      data: flashSales,
+    };
+  }
+
   async findOne(id: string) {
     const product = await this.prisma.product.findUnique({
       where: { id },

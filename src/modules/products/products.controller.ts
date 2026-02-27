@@ -44,6 +44,14 @@ export class ProductsController {
   }
 
   @Public()
+  @Get('flash-sales')
+  @ApiOperation({ summary: 'دریافت محصولات فروش ویژه (فلش سیل)' })
+  @ApiResponse({ status: 200, description: 'لیست محصولات فروش ویژه' })
+  getFlashSales() {
+    return this.productsService.getFlashSales();
+  }
+
+  @Public()
   @Get('slug/:slug')
   @ApiOperation({ summary: 'دریافت محصول بر اساس slug' })
   @ApiResponse({ status: 200, description: 'جزئیات محصول' })
