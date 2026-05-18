@@ -1,5 +1,7 @@
 import { ApiProperty } from '@nestjs/swagger';
+import { Type } from 'class-transformer';
 import {
+  IsDate,
   IsString,
   IsInt,
   IsOptional,
@@ -12,6 +14,36 @@ import {
 } from 'class-validator';
 
 export class CreateProductDto {
+  @ApiProperty({
+    example: 2250000,
+    required: false,
+    description: 'قیمت تخفیف‌خورده برای فلش‌سیل',
+  })
+  @IsOptional()
+  @IsInt()
+  @Min(0)
+  discountPrice?: number;
+
+  @ApiProperty({
+    example: '2026-05-20T09:00:00.000Z',
+    required: false,
+    format: 'date-time',
+  })
+  @IsOptional()
+  @Type(() => Date)
+  @IsDate()
+  flashSaleStartDate?: Date;
+
+  @ApiProperty({
+    example: '2026-05-25T21:00:00.000Z',
+    required: false,
+    format: 'date-time',
+  })
+  @IsOptional()
+  @Type(() => Date)
+  @IsDate()
+  flashSaleEndDate?: Date;
+
   @ApiProperty({ example: 'گردنبند چشم ببر' })
   @IsString()
   name: string;
