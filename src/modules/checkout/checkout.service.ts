@@ -76,10 +76,14 @@ export class CheckoutService {
       throw new BadRequestException('کاربر یافت نشد');
     }
 
+    const userEmail =
+      user.email ??
+      (user.phoneNumber ? `${user.phoneNumber}@moramor.local` : `${user.id}@moramor.local`);
+
     const paymentResult = await this.paymentService.requestPayment(paymentMethod, {
       amount: order.totalPrice,
       orderId: order.id,
-      userEmail: user.email ?? `${user.phoneNumber}@moramor.local`,
+      userEmail,
       description: `پرداخت سفارش ${order.orderNumber}`,
     });
 

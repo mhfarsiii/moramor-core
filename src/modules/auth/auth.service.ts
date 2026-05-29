@@ -308,7 +308,7 @@ export class AuthService {
         }
       }
 
-      const tokens = await this.generateTokens(user.id, user.phoneNumber, user.role, user.email);
+      const tokens = await this.generateTokens(user.id, phoneNumber, user.role, user.email);
 
       await this.storeRefreshToken(user.id, tokens.refreshToken);
 
@@ -335,7 +335,7 @@ export class AuthService {
 
   private async generateTokens(
     userId: string,
-    phoneNumber: string,
+    phoneNumber: string | null | undefined,
     role: string,
     email?: string | null,
   ) {
@@ -351,8 +351,8 @@ export class AuthService {
 
     const payload: JwtPayload = {
       sub: userId,
-      phoneNumber,
       role,
+      ...(phoneNumber ? { phoneNumber } : {}),
       ...(email ? { email } : {}),
     };
 

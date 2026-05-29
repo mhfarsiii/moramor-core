@@ -92,9 +92,9 @@ describe('AuthService', () => {
 
   describe('verifyOtp', () => {
     it('should reject invalid OTP', async () => {
-      await expect(
-        service.verifyOtp({ phoneNumber: '09123456789', otp: '99999' }),
-      ).rejects.toThrow(BadRequestException);
+      await expect(service.verifyOtp({ phoneNumber: '09123456789', otp: '99999' })).rejects.toThrow(
+        BadRequestException,
+      );
     });
 
     it('should authenticate existing user with valid mock OTP', async () => {
