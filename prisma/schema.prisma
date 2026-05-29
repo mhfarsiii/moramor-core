@@ -14,12 +14,13 @@ datasource db {
 
 model User {
   id            String   @id @default(cuid())
-  email         String   @unique
-  password      String? // Nullable for OAuth users
+  phoneNumber   String   @unique
+  email         String?  @unique
+  password      String? // Nullable for OTP-only users; required for admin accounts
   name          String
-  phone         String?
   role          UserRole @default(USER)
   isActive      Boolean  @default(true)
+  phoneVerified Boolean  @default(false)
   emailVerified Boolean  @default(false)
 
   // OAuth fields
@@ -38,6 +39,7 @@ model User {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
+  @@index([phoneNumber])
   @@index([email])
   @@index([googleId])
   @@map("users")
@@ -70,15 +72,15 @@ model PasswordResetToken {
 }
 
 model OtpCode {
-  id        String   @id @default(cuid())
-  email     String
-  code      String // 6-digit code
-  userId    String? // Nullable for new users
-  user      User?    @relation(fields: [userId], references: [id], onDelete: Cascade)
-  expiresAt DateTime
-  createdAt DateTime @default(now())
+  id          String   @id @default(cuid())
+  phoneNumber String
+  code        String
+  userId      String?
+  user        User?    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  expiresAt   DateTime
+  createdAt   DateTime @default(now())
 
-  @@index([email])
+  @@index([phoneNumber])
   @@index([code])
   @@index([userId])
   @@map("otp_codes")
@@ -256,10 +258,11 @@ model Order {
   deliveredAt     DateTime?
 
   // Payment
-  paymentMethod PaymentMethod
-  paymentStatus PaymentStatus @default(UNPAID)
-  paymentId     String? // Transaction ID from gateway
-  paidAt        DateTime?
+  paymentMethod     PaymentMethod
+  paymentStatus     PaymentStatus @default(UNPAID)
+  paymentAuthority  String?       @unique // Zarinpal authority while payment is pending
+  paymentId         String? // Gateway reference ID after successful payment
+  paidAt            DateTime?
 
   // Notes
   customerNote String? @db.Text

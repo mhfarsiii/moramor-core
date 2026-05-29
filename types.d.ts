@@ -64,7 +64,8 @@ export interface ApiResponse<T = any> {
 
 export interface JwtPayload {
   sub: string;
-  email: string;
+  phoneNumber: string;
+  email?: string;
   role: UserRole;
   iat?: number;
   exp?: number;
@@ -81,11 +82,12 @@ export interface AuthTokens {
 
 export interface User {
   id: string;
-  email: string;
+  phoneNumber: string;
+  email?: string;
   name: string;
-  phone?: string;
   role: UserRole;
   isActive: boolean;
+  phoneVerified: boolean;
   emailVerified: boolean;
   createdAt: string;
   updatedAt: string;
@@ -120,13 +122,13 @@ export interface AuthTokens {
   refreshToken: string;
 }
 
-export interface OtpSendCodeRequest {
-  email: EmailString;
+export interface OtpSendRequest {
+  phoneNumber: PhoneString;
 }
 
-export interface OtpVerifyCodeRequest {
-  email: EmailString;
-  code: string;
+export interface OtpVerifyRequest {
+  phoneNumber: PhoneString;
+  otp: string;
 }
 
 export interface ForgotPasswordRequest {
@@ -148,11 +150,11 @@ export interface LogoutResponse {
   message: string;
 }
 
-export interface OtpSendCodeResponse {
+export interface OtpSendResponse {
   message: string;
 }
 
-export interface OtpVerifyCodeResponse extends AuthResponse {
+export interface OtpVerifyResponse extends AuthResponse {
   isNewUser: boolean;
 }
 
@@ -631,8 +633,8 @@ export type PostalCodeString = string; // Iranian postal code format
 
 // Auth endpoints
 export type AuthLoginEndpoint = '/auth/login';
-export type AuthSendCodeEndpoint = '/auth/send-code';
-export type AuthVerifyCodeEndpoint = '/auth/verify-code';
+export type AuthSendOtpEndpoint = '/auth/send-otp';
+export type AuthVerifyOtpEndpoint = '/auth/verify-otp';
 export type AuthForgotPasswordEndpoint = '/auth/forgot-password';
 export type AuthResetPasswordEndpoint = '/auth/reset-password';
 export type AuthRefreshEndpoint = '/auth/refresh';
@@ -716,13 +718,13 @@ export interface ApiEndpoints {
     body: LoginRequest;
     response: AuthResponse;
   };
-  'POST /auth/send-code': {
-    body: OtpSendCodeRequest;
-    response: OtpSendCodeResponse;
+  'POST /auth/send-otp': {
+    body: OtpSendRequest;
+    response: OtpSendResponse;
   };
-  'POST /auth/verify-code': {
-    body: OtpVerifyCodeRequest;
-    response: OtpVerifyCodeResponse;
+  'POST /auth/verify-otp': {
+    body: OtpVerifyRequest;
+    response: OtpVerifyResponse;
   };
   'POST /auth/forgot-password': {
     body: ForgotPasswordRequest;
@@ -988,12 +990,12 @@ export type {
   UserProfileResponse,
   LoginRequest,
   AuthTokens,
-  OtpSendCodeRequest,
-  OtpVerifyCodeRequest,
+  OtpSendRequest,
+  OtpVerifyRequest,
   AuthResponse,
   LogoutResponse,
-  OtpSendCodeResponse,
-  OtpVerifyCodeResponse,
+  OtpSendResponse,
+  OtpVerifyResponse,
   ForgotPasswordRequest,
   ResetPasswordRequest,
   ForgotPasswordResponse,

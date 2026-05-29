@@ -6,37 +6,39 @@ const prisma = new PrismaClient();
 async function main() {
   const saltRounds = 10;
 
-  // اکانت اول: Admin
   const adminPassword = await bcrypt.hash('Mahmoud@Admin123', saltRounds);
   await prisma.user.upsert({
-    where: { email: 'muti@moramor.com' },
+    where: { phoneNumber: '09100000001' },
     update: {},
     create: {
+      phoneNumber: '09100000001',
       email: 'muti@moramor.com',
       name: 'Main Admin',
       password: adminPassword,
       role: 'SUPER_ADMIN',
       isActive: true,
+      phoneVerified: true,
       emailVerified: true,
     },
   });
 
-  // اکانت دوم: مثلاً ادمین دوم یا یک یوزر تست
   const secondPassword = await bcrypt.hash('Sarah@Admin123', saltRounds);
   await prisma.user.upsert({
-    where: { email: 'mySarah@moramor.com' },
+    where: { phoneNumber: '09100000002' },
     update: {},
     create: {
+      phoneNumber: '09100000002',
       email: 'mySarah@moramor.com',
       name: 'Sales Manager',
       password: secondPassword,
-      role: 'ADMIN', 
+      role: 'ADMIN',
       isActive: true,
+      phoneVerified: true,
       emailVerified: true,
     },
   });
 
-  console.log('Done! 2 Accounts have been created successfully.');
+  console.log('Done! 2 admin accounts have been created successfully.');
 }
 
 main()

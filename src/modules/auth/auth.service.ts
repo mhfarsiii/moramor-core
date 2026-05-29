@@ -6,10 +6,12 @@ import * as bcrypt from 'bcrypt';
 import { PrismaService } from '../../common/prisma/prisma.service';
 import { ForgotPasswordDto } from './dto/forgot-password.dto';
 import { ResetPasswordDto } from './dto/reset-password.dto';
-import { SendCodeDto } from './dto/send-code.dto';
-import { VerifyCodeDto } from './dto/verify-code.dto';
+import { SendOtpDto } from './dto/send-otp.dto';
+import { VerifyOtpDto } from './dto/verify-otp.dto';
 import { JwtPayload } from '../../common/interfaces/jwt-payload.interface';
 import { MailService } from './mail.service';
+
+const MOCK_OTP = '12345';
 
 @Injectable()
 export class AuthService {
@@ -24,12 +26,10 @@ export class AuthService {
 
   async refreshTokens(refreshToken: string) {
     try {
-      // Verify refresh token
       this.jwtService.verify(refreshToken, {
         secret: this.configService.get<string>('JWT_REFRESH_SECRET'),
       });
 
-      // Check if refresh token exists in DB
       const storedToken = await this.prisma.refreshToken.findUnique({
         where: { token: refreshToken },
         include: { user: true },
@@ -39,7 +39,6 @@ export class AuthService {
         throw new UnauthorizedException('توکن نامعتبر است');
       }
 
-      // Check if token is expired
       if (new Date() > storedToken.expiresAt) {
         await this.prisma.refreshToken.delete({
           where: { id: storedToken.id },
@@ -47,14 +46,13 @@ export class AuthService {
         throw new UnauthorizedException('توکن منقضی شده است');
       }
 
-      // Generate new tokens
       const tokens = await this.generateTokens(
         storedToken.user.id,
-        storedToken.user.email,
+        storedToken.user.phoneNumber,
         storedToken.user.role,
+        storedToken.user.email,
       );
 
-      // Delete old refresh token and store new one
       await this.prisma.refreshToken.delete({
         where: { id: storedToken.id },
       });
@@ -67,7 +65,6 @@ export class AuthService {
   }
 
   async logout(userId: string, refreshToken: string) {
-    // Delete refresh token
     await this.prisma.refreshToken.deleteMany({
       where: {
         userId,
@@ -107,7 +104,6 @@ export class AuthService {
       throw new UnauthorizedException('ایمیل یا رمز عبور اشتباه است');
     }
 
-    // Only allow password login for admin roles
     if (user.role !== 'ADMIN' && user.role !== 'SUPER_ADMIN') {
       throw new UnauthorizedException(
         'ورود با رمز عبور فقط برای پنل ادمین مجاز است. لطفاً از ورود با کد یک‌بارمصرف استفاده کنید.',
@@ -129,7 +125,7 @@ export class AuthService {
       throw new UnauthorizedException('ایمیل یا رمز عبور اشتباه است');
     }
 
-    const tokens = await this.generateTokens(user.id, user.email, user.role);
+    const tokens = await this.generateTokens(user.id, user.phoneNumber, user.role, user.email);
 
     await this.storeRefreshToken(user.id, tokens.refreshToken);
 
@@ -144,9 +140,6 @@ export class AuthService {
     };
   }
 
-  /**
-   * Handle forgot password request (primarily for admin accounts).
-   */
   async forgotPassword(forgotPasswordDto: ForgotPasswordDto) {
     const { email } = forgotPasswordDto;
     const normalizedEmail = email.toLowerCase().trim();
@@ -156,19 +149,16 @@ export class AuthService {
         where: { email: normalizedEmail },
       });
 
-      // Always return generic success message to avoid email enumeration
       if (!user) {
         this.logger.warn(`Password reset requested for non-existent email: ${normalizedEmail}`);
         return { message: 'اگر ایمیل در سیستم موجود باشد، لینک بازیابی ارسال شد' };
       }
 
-      // Only meaningful for accounts with password (typically admin)
       if (!user.password) {
         this.logger.warn(`Password reset requested for user without password: ${normalizedEmail}`);
         return { message: 'اگر ایمیل در سیستم موجود باشد، لینک بازیابی ارسال شد' };
       }
 
-      // Optional: restrict to admin roles
       if (user.role !== 'ADMIN' && user.role !== 'SUPER_ADMIN') {
         this.logger.warn(
           `Password reset requested for non-admin user via password flow: ${normalizedEmail}`,
@@ -193,7 +183,7 @@ export class AuthService {
         },
       });
 
-      await this.mailService.sendPasswordResetEmail(user.email, resetToken, user.name);
+      await this.mailService.sendPasswordResetEmail(user.email!, resetToken, user.name);
 
       this.logger.log(`Password reset email sent to: ${email}`);
 
@@ -204,9 +194,6 @@ export class AuthService {
     }
   }
 
-  /**
-   * Handle password reset with token.
-   */
   async resetPassword(resetPasswordDto: ResetPasswordDto) {
     const { token, newPassword } = resetPasswordDto;
 
@@ -227,7 +214,6 @@ export class AuthService {
         throw new BadRequestException('توکن منقضی شده است');
       }
 
-      // Restrict password reset primarily to admin accounts
       if (resetToken.user.role !== 'ADMIN' && resetToken.user.role !== 'SUPER_ADMIN') {
         throw new BadRequestException('بازیابی رمز عبور برای این حساب از طریق این روش مجاز نیست');
       }
@@ -266,286 +252,71 @@ export class AuthService {
   }
 
   /**
-   * Send OTP code to email for unified sign-in/sign-up
-   * @param sendCodeDto - Contains email address
-   * @returns Promise with success message
+   * Send mock OTP to mobile number for unified sign-in/sign-up.
+   * No SMS provider is integrated; OTP is always MOCK_OTP and logged.
    */
-  async sendOtpCode(sendCodeDto: SendCodeDto) {
-    const { email } = sendCodeDto;
+  async sendOtp(sendOtpDto: SendOtpDto) {
+    const phoneNumber = sendOtpDto.phoneNumber.trim();
 
-    // Normalize email to lowercase for consistency
-    const normalizedEmail = email.toLowerCase().trim();
+    this.logger.log(`Mock OTP ${MOCK_OTP} requested for ${phoneNumber}`);
 
-    let isNewUser = false;
-    let userId: string | null = null;
-    let otpCodeId: string | null = null;
-
-    try {
-      // Use transaction to ensure atomicity and handle race conditions
-      const result = await this.prisma.$transaction(
-        async (tx) => {
-          // Check if user exists or create new one
-          // Using upsert to handle race conditions where multiple requests
-          // might try to create the same user simultaneously
-          let user = await tx.user.findUnique({
-            where: { email: normalizedEmail },
-          });
-
-          if (!user) {
-            try {
-              user = await tx.user.create({
-                data: {
-                  email: normalizedEmail,
-                  name: normalizedEmail.split('@')[0], // Use email prefix as default name
-                  isActive: true,
-                  emailVerified: false,
-                },
-              });
-              isNewUser = true;
-              this.logger.log(`New user created for OTP flow: ${normalizedEmail}`);
-            } catch (createError: any) {
-              // Handle race condition: if user was created by another request
-              if (createError?.code === 'P2002') {
-                // Unique constraint violation - user was created by another request
-                user = await tx.user.findUnique({
-                  where: { email: normalizedEmail },
-                });
-                if (!user) {
-                  throw new BadRequestException('خطا در ایجاد کاربر. لطفاً دوباره تلاش کنید');
-                }
-                this.logger.warn(
-                  `User ${normalizedEmail} was created by concurrent request, using existing user`,
-                );
-              } else {
-                throw createError;
-              }
-            }
-          }
-
-          userId = user.id;
-
-          // Delete any existing OTP codes for this email
-          await tx.otpCode.deleteMany({
-            where: { email: normalizedEmail },
-          });
-
-          // Generate 6-digit random code
-          const code = Math.floor(100000 + Math.random() * 900000).toString();
-
-          // Store code with configurable expiration
-          const expiresAt = this._parseExpirationToDate(
-            this.configService.get<string>('OTP_CODE_EXPIRATION', '10m'),
-          );
-
-          const otpCode = await tx.otpCode.create({
-            data: {
-              email: normalizedEmail,
-              code,
-              userId: user.id,
-              expiresAt,
-            },
-          });
-
-          return { user, code, otpCodeId: otpCode.id };
-        },
-        {
-          maxWait: 5000, // Maximum time to wait for a transaction slot
-          timeout: 10000, // Maximum time the transaction can run
-        },
-      );
-
-      const { user, code } = result;
-      otpCodeId = result.otpCodeId;
-
-      // Send OTP code via email
-      // If this fails, we need to clean up the newly created user and OTP code
-      await this.mailService.sendOtpEmail(normalizedEmail, code, user.name);
-
-      this.logger.log(`OTP code sent to: ${normalizedEmail}`);
-
-      // Return consistent response for both new and returning users
-      return {
-        message: 'کد تأیید به ایمیل شما ارسال شد',
-      };
-    } catch (error) {
-      this.logger.error(`Failed to send OTP code to ${normalizedEmail}:`, error);
-
-      // Clean up: If we created a new user and OTP code, but email sending failed,
-      // we need to delete them to maintain data consistency
-      if (isNewUser && userId) {
-        try {
-          // Delete OTP code if it was created
-          if (otpCodeId) {
-            await this.prisma.otpCode
-              .delete({
-                where: { id: otpCodeId },
-              })
-              .catch(() => {
-                // Ignore errors during cleanup
-              });
-          }
-
-          // Delete the newly created user
-          await this.prisma.user
-            .delete({
-              where: { id: userId },
-            })
-            .catch(() => {
-              // Ignore errors during cleanup
-            });
-
-          this.logger.warn(
-            `Cleaned up newly created user ${userId} due to email sending failure for ${normalizedEmail}`,
-          );
-        } catch (cleanupError) {
-          this.logger.error(
-            `Failed to clean up user ${userId} after email sending failure:`,
-            cleanupError,
-          );
-        }
-      } else if (otpCodeId) {
-        // If user existed but OTP code was created, clean up the OTP code
-        try {
-          await this.prisma.otpCode
-            .delete({
-              where: { id: otpCodeId },
-            })
-            .catch(() => {
-              // Ignore errors during cleanup
-            });
-        } catch (cleanupError) {
-          this.logger.error(
-            `Failed to clean up OTP code ${otpCodeId} after email sending failure:`,
-            cleanupError,
-          );
-        }
-      }
-
-      // Re-throw BadRequestException if it was thrown in transaction
-      if (error instanceof BadRequestException) {
-        throw error;
-      }
-
-      // Log the actual error for debugging
-      const errorMessage = error instanceof Error ? error.message : 'خطای نامشخص در ارسال ایمیل';
-      const errorStack = error instanceof Error ? error.stack : undefined;
-
-      this.logger.error(
-        `Failed to send OTP code to ${normalizedEmail}. Error: ${errorMessage}`,
-        errorStack,
-      );
-
-      // Check for specific error types to provide better error messages
-      if (errorMessage.includes('timeout') || errorMessage.includes('Timeout')) {
-        throw new BadRequestException(
-          'خطا در ارسال کد تأیید: زمان اتصال به سرور ایمیل به پایان رسید. لطفاً دوباره تلاش کنید',
-        );
-      }
-
-      if (
-        errorMessage.includes('authentication') ||
-        errorMessage.includes('Authentication') ||
-        errorMessage.includes('Invalid login')
-      ) {
-        throw new BadRequestException('خطا در پیکربندی سرور ایمیل. لطفاً با پشتیبانی تماس بگیرید');
-      }
-
-      if (errorMessage.includes('ENOTFOUND') || errorMessage.includes('ECONNREFUSED')) {
-        throw new BadRequestException('خطا در اتصال به سرور ایمیل. لطفاً با پشتیبانی تماس بگیرید');
-      }
-
-      throw new BadRequestException('خطا در ارسال کد تأیید. لطفاً دوباره تلاش کنید');
-    }
+    return {
+      message: 'کد تأیید ارسال شد',
+    };
   }
 
   /**
-   * Verify OTP code and authenticate user
-   * @param verifyCodeDto - Contains email and code
-   * @returns Promise with user data, tokens, and isNewUser flag
+   * Verify mock OTP and authenticate user (find or create).
    */
-  async verifyOtpCode(verifyCodeDto: VerifyCodeDto) {
-    const { email, code } = verifyCodeDto;
+  async verifyOtp(verifyOtpDto: VerifyOtpDto) {
+    const phoneNumber = verifyOtpDto.phoneNumber.trim();
+    const { otp } = verifyOtpDto;
 
-    // Normalize email to lowercase for consistency
-    const normalizedEmail = email.toLowerCase().trim();
+    if (otp !== MOCK_OTP) {
+      throw new BadRequestException('کد تأیید نامعتبر است');
+    }
 
     try {
-      // Find OTP code
-      const otpCode = await this.prisma.otpCode.findFirst({
-        where: {
-          email: normalizedEmail,
-          code,
-        },
-        orderBy: {
-          createdAt: 'desc',
-        },
-      });
+      let isNewUser = false;
 
-      if (!otpCode) {
-        throw new BadRequestException('کد تأیید نامعتبر است');
-      }
-
-      // Check if code is expired
-      if (new Date() > otpCode.expiresAt) {
-        // Clean up expired code
-        await this.prisma.otpCode.delete({
-          where: { id: otpCode.id },
-        });
-        throw new BadRequestException('کد تأیید منقضی شده است');
-      }
-
-      // Find or get user
-      const user = await this.prisma.user.findUnique({
-        where: { email: normalizedEmail },
+      let user = await this.prisma.user.findUnique({
+        where: { phoneNumber },
       });
 
       if (!user) {
-        throw new BadRequestException('کاربر یافت نشد');
-      }
-
-      // Check if user is active
-      if (!user.isActive) {
-        throw new UnauthorizedException('حساب کاربری شما غیرفعال شده است');
-      }
-
-      const isNewUser = !user.emailVerified;
-
-      // Update email verification status and clean up OTP code in a transaction
-      await this.prisma.$transaction(async (tx) => {
-        // Set emailVerified to true
-        await tx.user.update({
-          where: { id: user.id },
-          data: { emailVerified: true },
-        });
-
-        // Delete OTP code
-        await tx.otpCode.delete({
-          where: { id: otpCode.id },
-        });
-
-        // Clean up any other expired OTP codes for this email
-        await tx.otpCode.deleteMany({
-          where: {
-            email: normalizedEmail,
-            expiresAt: {
-              lt: new Date(),
-            },
+        user = await this.prisma.user.create({
+          data: {
+            phoneNumber,
+            name: phoneNumber,
+            isActive: true,
+            phoneVerified: true,
           },
         });
-      });
+        isNewUser = true;
+        this.logger.log(`New user created via OTP flow: ${phoneNumber}`);
+      } else {
+        if (!user.isActive) {
+          throw new UnauthorizedException('حساب کاربری شما غیرفعال شده است');
+        }
 
-      // Generate JWT tokens
-      const tokens = await this.generateTokens(user.id, user.email, user.role);
+        if (!user.phoneVerified) {
+          user = await this.prisma.user.update({
+            where: { id: user.id },
+            data: { phoneVerified: true },
+          });
+          isNewUser = true;
+        }
+      }
 
-      // Store refresh token
+      const tokens = await this.generateTokens(user.id, user.phoneNumber, user.role, user.email);
+
       await this.storeRefreshToken(user.id, tokens.refreshToken);
 
-      // Remove password from response
       // eslint-disable-next-line @typescript-eslint/no-unused-vars
       const { password: _, ...userWithoutPassword } = user;
 
       this.logger.log(
-        `OTP verification successful for user: ${normalizedEmail}, isNewUser: ${isNewUser}`,
+        `OTP verification successful for user: ${phoneNumber}, isNewUser: ${isNewUser}`,
       );
 
       return {
@@ -557,12 +328,17 @@ export class AuthService {
       if (error instanceof BadRequestException || error instanceof UnauthorizedException) {
         throw error;
       }
-      this.logger.error(`Failed to verify OTP code for ${normalizedEmail}:`, error);
+      this.logger.error(`Failed to verify OTP for ${phoneNumber}:`, error);
       throw new BadRequestException('خطا در تأیید کد. لطفاً دوباره تلاش کنید');
     }
   }
 
-  private async generateTokens(userId: string, email: string, role: string) {
+  private async generateTokens(
+    userId: string,
+    phoneNumber: string,
+    role: string,
+    email?: string | null,
+  ) {
     const jwtSecret = this.configService.get<string>('JWT_SECRET');
     const jwtRefreshSecret = this.configService.get<string>('JWT_REFRESH_SECRET');
 
@@ -575,8 +351,9 @@ export class AuthService {
 
     const payload: JwtPayload = {
       sub: userId,
-      email,
+      phoneNumber,
       role,
+      ...(email ? { email } : {}),
     };
 
     const [accessToken, refreshToken] = await Promise.all([
@@ -596,11 +373,6 @@ export class AuthService {
     };
   }
 
-  /**
-   * Parse expiration string (e.g. "15m", "2h", "7d") to Date object
-   * @param expiresIn - Expiration string in format: number + unit (s=seconds, m=minutes, h=hours, d=days)
-   * @returns Date object representing expiration time
-   */
   private _parseExpirationToDate(expiresIn: string): Date {
     const expiresAt = new Date();
     const match = expiresIn.match(/(\d+)([smhd])/);

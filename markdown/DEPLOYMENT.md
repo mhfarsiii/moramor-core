@@ -419,7 +419,8 @@ docker-compose exec app npx prisma db pull
 ```bash
 # بررسی ZarinPal config
 # اطمینان از صحت ZARINPAL_MERCHANT_ID
-# بررسی ZARINPAL_CALLBACK_URL
+# FRONTEND_URL باید به دامنه فرانت‌اند اشاره کند (callback: {FRONTEND_URL}/checkout/verify)
+# ZARINPAL_CALLBACK_URL اختیاری است؛ در صورت تنظیم باید همان URL فرانت‌اند باشد، نه API بک‌اند
 ```
 
 ### 3. مشکل در آپلود فایل

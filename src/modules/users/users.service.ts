@@ -11,11 +11,12 @@ export class UsersService {
       where: { id },
       select: {
         id: true,
+        phoneNumber: true,
         email: true,
         name: true,
-        phone: true,
         role: true,
         isActive: true,
+        phoneVerified: true,
         emailVerified: true,
         createdAt: true,
         updatedAt: true,
@@ -27,6 +28,12 @@ export class UsersService {
     }
 
     return user;
+  }
+
+  async findByPhoneNumber(phoneNumber: string) {
+    return this.prisma.user.findUnique({
+      where: { phoneNumber },
+    });
   }
 
   async findByEmail(email: string) {
@@ -41,11 +48,12 @@ export class UsersService {
       data: updateUserDto,
       select: {
         id: true,
+        phoneNumber: true,
         email: true,
         name: true,
-        phone: true,
         role: true,
         isActive: true,
+        phoneVerified: true,
         emailVerified: true,
         createdAt: true,
         updatedAt: true,
@@ -64,11 +72,12 @@ export class UsersService {
         take: limit,
         select: {
           id: true,
+          phoneNumber: true,
           email: true,
           name: true,
-          phone: true,
           role: true,
           isActive: true,
+          phoneVerified: true,
           emailVerified: true,
           createdAt: true,
           updatedAt: true,

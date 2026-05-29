@@ -66,12 +66,12 @@ Authorization: Bearer <access_token>
 }
 ```
 
-### ورود با OTP (اختیاری)
+### ورود کاربران عادی (OTP موبایل)
 
-در صورت نیاز می‌توانید به‌جای پسورد از OTP هم برای ادمین استفاده کنید:
+کاربران فروشگاه از OTP موبایل استفاده می‌کنند (Mock: کد `12345`):
 
-- `POST /auth/send-code`
-- `POST /auth/verify-code`
+- `POST /auth/send-otp` — `{ "phoneNumber": "09123456789" }`
+- `POST /auth/verify-otp` — `{ "phoneNumber": "09123456789", "otp": "12345" }`
 
 ---
 

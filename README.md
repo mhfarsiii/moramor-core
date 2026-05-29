@@ -23,7 +23,8 @@
 ### احراز هویت و مجوزدهی
 - ✅ ثبت‌نام و ورود با JWT
 - ✅ Refresh Token برای امنیت بیشتر
-- ✅ ورود با Google OAuth 2.0
+- ✅ ورود کاربران با OTP موبایل (Mock برای تست)
+- ✅ ورود ادمین با ایمیل + رمز عبور
 - ✅ نقش‌های کاربری (User, Admin, Super Admin)
 - ✅ محافظت از مسیرها با Guards
 
@@ -125,9 +126,14 @@ DATABASE_URL="postgresql://moramor:moramor123@localhost:5432/moramor_db?schema=p
 JWT_SECRET=your-super-secret-jwt-key
 JWT_REFRESH_SECRET=your-refresh-secret-key
 
+# Frontend (Zarinpal callback redirects user here, then frontend calls backend verify API)
+FRONTEND_URL=http://localhost:3000
+
 # ZarinPal
 ZARINPAL_MERCHANT_ID=your-merchant-id
 ZARINPAL_SANDBOX=true
+# Optional override; must be frontend URL e.g. https://your-domain.com/checkout/verify
+# ZARINPAL_CALLBACK_URL=https://your-domain.com/checkout/verify
 
 # S3/MinIO
 S3_ENDPOINT=http://localhost:9000

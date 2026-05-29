@@ -6,4 +6,3 @@ export class UpdateBestSellerStatusDto {
   @IsBoolean()
   isBestSeller: boolean;
 }
-

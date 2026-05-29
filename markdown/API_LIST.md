@@ -18,13 +18,13 @@ Authorization: Bearer YOUR_ACCESS_TOKEN
 
 ## 🔐 احراز هویت (Auth)
 
-> **روش ورود کاربران فروشگاه:** فقط از طریق **OTP ایمیل** (`/auth/send-code` و `/auth/verify-code`).  
-> **پنل ادمین:** علاوه بر OTP می‌تواند از **ایمیل/پسورد** (`/auth/login`) و فراموشی رمز عبور استفاده کند.
+> **روش ورود کاربران فروشگاه:** فقط از طریق **OTP موبایل Mock** (`/auth/send-otp` و `/auth/verify-otp` — کد تست: `12345`).  
+> **پنل ادمین:** از **ایمیل/پسورد** (`/auth/login`) و فراموشی رمز عبور استفاده می‌کند.
 
 | Method | Endpoint | Auth | Description |
 |--------|----------|------|-------------|
-| POST | `/auth/send-code` | ❌ | ارسال کد تأیید ۶ رقمی به ایمیل برای ورود/ثبت‌نام |
-| POST | `/auth/verify-code` | ❌ | تأیید کد OTP و دریافت accessToken و refreshToken |
+| POST | `/auth/send-otp` | ❌ | ارسال OTP Mock به شماره موبایل برای ورود/ثبت‌نام |
+| POST | `/auth/verify-otp` | ❌ | تأیید OTP Mock (`12345`) و دریافت accessToken و refreshToken |
 | POST | `/auth/login` | ❌ | ورود با ایمیل/پسورد (مخصوص پنل ادمین) |
 | POST | `/auth/forgot-password` | ❌ | درخواست بازیابی رمز عبور (برای حساب‌های دارای پسورد) |
 | POST | `/auth/reset-password` | ❌ | تغییر رمز عبور با توکن بازیابی |

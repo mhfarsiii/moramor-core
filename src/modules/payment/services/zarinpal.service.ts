@@ -18,8 +18,26 @@ export class ZarinpalService {
   constructor(private configService: ConfigService) {
     this.merchantId = this.configService.get<string>('ZARINPAL_MERCHANT_ID') || '';
     this.sandbox = this.configService.get<string>('ZARINPAL_SANDBOX') === 'true';
-    this.callbackUrl = this.configService.get<string>('ZARINPAL_CALLBACK_URL') || '';
+    this.callbackUrl = this.resolveCallbackUrl();
     this.baseUrl = this.sandbox ? 'https://sandbox.zarinpal.com' : 'https://payment.zarinpal.com';
+  }
+
+  /**
+   * Zarinpal redirects the user to the frontend verify page, not the backend API.
+   * The frontend then calls GET /api/v1/checkout/verify with Authority and Status.
+   */
+  private resolveCallbackUrl(): string {
+    const frontendUrl = (
+      this.configService.get<string>('FRONTEND_URL') || 'http://localhost:3000'
+    ).replace(/\/$/, '');
+    const frontendCallback = `${frontendUrl}/checkout/verify`;
+
+    const envCallback = this.configService.get<string>('ZARINPAL_CALLBACK_URL')?.trim();
+    if (envCallback && envCallback.includes('/checkout/verify') && !envCallback.includes('/api/')) {
+      return envCallback;
+    }
+
+    return frontendCallback;
   }
 
   async request(data: PaymentRequestDto): Promise<PaymentResponse> {

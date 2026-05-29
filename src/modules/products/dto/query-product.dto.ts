@@ -1,6 +1,6 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsOptional, IsString, IsInt, Min, IsIn } from 'class-validator';
-import { Type } from 'class-transformer';
+import { IsOptional, IsString, IsInt, Min, IsIn, IsBoolean } from 'class-validator';
+import { Type, Transform } from 'class-transformer';
 
 export class QueryProductDto {
   @ApiProperty({ required: false, default: 1 })
@@ -50,6 +50,11 @@ export class QueryProductDto {
 
   @ApiProperty({ required: false, description: 'فقط محصولات ویژه' })
   @IsOptional()
-  @Type(() => Boolean)
+  @Transform(({ value }) => {
+    if (value === 'true' || value === true) return true;
+    if (value === 'false' || value === false) return false;
+    return undefined;
+  })
+  @IsBoolean()
   featured?: boolean;
 }

@@ -17,18 +17,20 @@ Production:  https://api.moramor.com/api/v1
 Authorization: Bearer YOUR_ACCESS_TOKEN
 ```
 
-### جریان ورود با OTP ایمیل
+### جریان ورود با OTP موبایل (Mock)
 
-در این نسخه، تنها روش ورود و ثبت‌نام، استفاده از **کد یک‌بارمصرف (OTP)** است. اگر کاربر وجود نداشته باشد، در اولین ورود با OTP به صورت خودکار ساخته می‌شود.
+در این نسخه، روش ورود و ثبت‌نام کاربران عادی، استفاده از **کد یک‌بارمصرف (OTP) موبایل** است. اگر کاربر وجود نداشته باشد، در اولین ورود با OTP به صورت خودکار ساخته می‌شود.
 
-#### 1. ارسال کد به ایمیل
+> **محیط تست:** کد OTP همیشه `12345` است و در لاگ سرور ثبت می‌شود. هیچ SMS واقعی ارسال نمی‌شود.
+
+#### 1. ارسال OTP به موبایل
 
 ```http
-POST /auth/send-code
+POST /auth/send-otp
 Content-Type: application/json
 
 {
-  "email": "ali@example.com"
+  "phoneNumber": "09123456789"
 }
 ```
 
@@ -36,19 +38,19 @@ Content-Type: application/json
 
 ```json
 {
-  "message": "کد تأیید به ایمیل شما ارسال شد"
+  "message": "کد تأیید ارسال شد"
 }
 ```
 
-#### 2. تأیید کد و دریافت توکن‌ها
+#### 2. تأیید OTP و دریافت توکن‌ها
 
 ```http
-POST /auth/verify-code
+POST /auth/verify-otp
 Content-Type: application/json
 
 {
-  "email": "ali@example.com",
-  "code": "123456"
+  "phoneNumber": "09123456789",
+  "otp": "12345"
 }
 ```
 
@@ -58,10 +60,12 @@ Content-Type: application/json
 {
   "user": {
     "id": "clr1234...",
-    "name": "علی محمدی",
-    "email": "ali@example.com",
+    "name": "09123456789",
+    "phoneNumber": "09123456789",
+    "email": null,
     "role": "USER",
-    "emailVerified": true
+    "phoneVerified": true,
+    "emailVerified": false
   },
   "accessToken": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
   "refreshToken": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
@@ -70,6 +74,20 @@ Content-Type: application/json
 ```
 
 فیلد `isNewUser` مشخص می‌کند که این اولین ورود کاربر است یا خیر.
+
+### ورود ادمین (ایمیل + رمز عبور)
+
+ورود با ایمیل و رمز عبور فقط برای نقش‌های `ADMIN` و `SUPER_ADMIN` فعال است:
+
+```http
+POST /auth/login
+Content-Type: application/json
+
+{
+  "email": "admin@moramor.com",
+  "password": "Admin@123456"
+}
+```
 
 ### تمدید Token
 
@@ -355,8 +373,9 @@ Content-Type: application/json
 
 1. کاربر به `paymentUrl` هدایت می‌شود
 2. پرداخت در درگاه انجام می‌شود
-3. بازگشت به `/checkout/verify?Authority=...&Status=OK`
-4. تایید خودکار پرداخت و ثبت سفارش
+3. درگاه کاربر را به **فرانت‌اند** برمی‌گرداند: `{FRONTEND_URL}/checkout/verify?Authority=...&Status=OK`
+4. فرانت‌اند `GET /api/v1/checkout/verify?Authority=...&Status=...` را فراخوانی می‌کند
+5. بک‌اند پرداخت را با زرین‌پال تایید و وضعیت سفارش را به‌روزرسانی می‌کند
 
 ### روش‌های پرداخت
 

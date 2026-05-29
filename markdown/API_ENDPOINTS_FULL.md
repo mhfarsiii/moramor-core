@@ -26,8 +26,8 @@
 - `GET /api/v1/auth/me` — دریافت اطلاعات کاربر جاری | Query: ندارد | Params: ندارد | Body: ندارد | Auth: محافظت‌شده (JWT) | Controller: `AuthController` / ماژول: `AuthModule`
 - `POST /api/v1/auth/forgot-password` — درخواست بازیابی رمز عبور (ارسال لینک به ایمیل) | Query: ندارد | Params: ندارد | Body: `ForgotPasswordDto` | Auth: عمومی | Controller: `AuthController` / ماژول: `AuthModule`
 - `POST /api/v1/auth/reset-password` — بازیابی رمز عبور با توکن ارسالی از ایمیل | Query: ندارد | Params: ندارد | Body: `ResetPasswordDto` | Auth: عمومی | Controller: `AuthController` / ماژول: `AuthModule`
-- `POST /api/v1/auth/send-code` — ارسال کد تأیید OTP به ایمیل | Query: ندارد | Params: ندارد | Body: `SendCodeDto` | Auth: عمومی | Controller: `AuthController` / ماژول: `AuthModule`
-- `POST /api/v1/auth/verify-code` — تأیید کد OTP و دریافت توکن‌های دسترسی | Query: ندارد | Params: ندارد | Body: `VerifyCodeDto` | Auth: عمومی | Controller: `AuthController` / ماژول: `AuthModule`
+- `POST /api/v1/auth/send-otp` — ارسال OTP Mock به موبایل | Query: ندارد | Params: ندارد | Body: `SendOtpDto` | Auth: عمومی | Controller: `AuthController` / ماژول: `AuthModule`
+- `POST /api/v1/auth/verify-otp` — تأیید OTP Mock و دریافت توکن‌های دسترسی | Query: ندارد | Params: ندارد | Body: `VerifyOtpDto` | Auth: عمومی | Controller: `AuthController` / ماژول: `AuthModule`
 
 ---
 

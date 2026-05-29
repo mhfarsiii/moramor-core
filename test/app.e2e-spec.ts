@@ -41,40 +41,30 @@ describe('AppController (e2e)', () => {
   });
 
   describe('Authentication', () => {
-    const testUser = {
-      email: `test-${Date.now()}@example.com`,
-      password: 'Test@123456',
-      name: 'Test User',
-    };
-
+    const testPhone = `09${String(Date.now()).slice(-9)}`;
     let accessToken: string;
 
-    it('/api/v1/auth/register (POST) should register a new user', () => {
+    it('/api/v1/auth/send-otp (POST) should accept phone number', () => {
       return request(app.getHttpServer())
-        .post('/api/v1/auth/register')
-        .send(testUser)
+        .post('/api/v1/auth/send-otp')
+        .send({ phoneNumber: testPhone })
+        .expect(201)
+        .expect((res) => {
+          expect(res.body).toHaveProperty('message');
+        });
+    });
+
+    it('/api/v1/auth/verify-otp (POST) should authenticate with mock OTP', () => {
+      return request(app.getHttpServer())
+        .post('/api/v1/auth/verify-otp')
+        .send({ phoneNumber: testPhone, otp: '12345' })
         .expect(201)
         .expect((res) => {
           expect(res.body).toHaveProperty('user');
           expect(res.body).toHaveProperty('accessToken');
           expect(res.body).toHaveProperty('refreshToken');
-          expect(res.body.user.email).toBe(testUser.email);
+          expect(res.body.user.phoneNumber).toBe(testPhone);
           accessToken = res.body.accessToken;
-        });
-    });
-
-    it('/api/v1/auth/login (POST) should login the user', () => {
-      return request(app.getHttpServer())
-        .post('/api/v1/auth/login')
-        .send({
-          email: testUser.email,
-          password: testUser.password,
-        })
-        .expect(200)
-        .expect((res) => {
-          expect(res.body).toHaveProperty('user');
-          expect(res.body).toHaveProperty('accessToken');
-          expect(res.body).toHaveProperty('refreshToken');
         });
     });
 
@@ -84,7 +74,7 @@ describe('AppController (e2e)', () => {
         .set('Authorization', `Bearer ${accessToken}`)
         .expect(200)
         .expect((res) => {
-          expect(res.body.email).toBe(testUser.email);
+          expect(res.body.phoneNumber).toBe(testPhone);
         });
     });
 

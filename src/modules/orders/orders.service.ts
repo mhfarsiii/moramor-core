@@ -156,6 +156,7 @@ export class OrdersService {
             select: {
               id: true,
               name: true,
+              phoneNumber: true,
               email: true,
             },
           },
@@ -259,6 +260,13 @@ export class OrdersService {
     return this.prisma.order.update({
       where: { id },
       data: updateData,
+    });
+  }
+
+  async setPaymentAuthority(orderId: string, authority: string) {
+    return this.prisma.order.update({
+      where: { id: orderId },
+      data: { paymentAuthority: authority },
     });
   }
 

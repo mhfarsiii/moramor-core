@@ -88,10 +88,7 @@ export class ProductsController {
   @ApiOperation({ summary: 'به‌روزرسانی وضعیت پرفروش بودن محصول (فقط ادمین)' })
   @ApiResponse({ status: 200, description: 'وضعیت پرفروش بودن محصول با موفقیت به‌روزرسانی شد' })
   @ApiResponse({ status: 404, description: 'محصول یافت نشد' })
-  updateBestSellerStatus(
-    @Param('id') id: string,
-    @Body() body: UpdateBestSellerStatusDto,
-  ) {
+  updateBestSellerStatus(@Param('id') id: string, @Body() body: UpdateBestSellerStatusDto) {
     return this.productsService.updateBestSellerStatus(id, body.isBestSeller);
   }
 

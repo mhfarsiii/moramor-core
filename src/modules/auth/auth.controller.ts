@@ -6,8 +6,8 @@ import { RefreshTokenDto } from './dto/refresh-token.dto';
 import { LoginDto } from './dto/login.dto';
 import { ForgotPasswordDto } from './dto/forgot-password.dto';
 import { ResetPasswordDto } from './dto/reset-password.dto';
-import { SendCodeDto } from './dto/send-code.dto';
-import { VerifyCodeDto } from './dto/verify-code.dto';
+import { SendOtpDto } from './dto/send-otp.dto';
+import { VerifyOtpDto } from './dto/verify-otp.dto';
 import { Public } from '../../common/decorators/public.decorator';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 
@@ -30,7 +30,7 @@ export class AuthController {
   @ApiOperation({
     summary: 'ورود به سیستم با ایمیل و رمز عبور (فقط پنل ادمین)',
     description:
-      'این مسیر فقط برای کاربران با نقش ADMIN یا SUPER_ADMIN فعال است. سایر کاربران باید از OTP استفاده کنند.',
+      'این مسیر فقط برای کاربران با نقش ADMIN یا SUPER_ADMIN فعال است. کاربران عادی باید از OTP موبایل استفاده کنند.',
   })
   @ApiResponse({
     status: 200,
@@ -38,18 +38,9 @@ export class AuthController {
     schema: {
       type: 'object',
       properties: {
-        accessToken: {
-          type: 'string',
-          description: 'JWT Access Token',
-        },
-        refreshToken: {
-          type: 'string',
-          description: 'JWT Refresh Token',
-        },
-        user: {
-          type: 'object',
-          description: 'اطلاعات کاربر',
-        },
+        accessToken: { type: 'string', description: 'JWT Access Token' },
+        refreshToken: { type: 'string', description: 'JWT Refresh Token' },
+        user: { type: 'object', description: 'اطلاعات کاربر' },
       },
     },
   })
@@ -80,7 +71,7 @@ export class AuthController {
   @ApiOperation({
     summary: 'درخواست بازیابی رمز عبور',
     description:
-      'ارسال لینک بازیابی رمز عبور به ایمیل کاربر. فقط برای حساب‌هایی که پسورد دارند (مانند ادمین).',
+      'ارسال لینک بازیابی رمز عبور به ایمیل کاربر. فقط برای حساب‌های ادمین که پسورد دارند.',
   })
   @ApiResponse({
     status: 200,
@@ -95,10 +86,7 @@ export class AuthController {
       },
     },
   })
-  @ApiResponse({
-    status: 400,
-    description: 'داده‌های ورودی نامعتبر است',
-  })
+  @ApiResponse({ status: 400, description: 'داده‌های ورودی نامعتبر است' })
   async forgotPassword(@Body() forgotPasswordDto: ForgotPasswordDto) {
     return this.authService.forgotPassword(forgotPasswordDto);
   }
@@ -115,28 +103,22 @@ export class AuthController {
     schema: {
       type: 'object',
       properties: {
-        message: {
-          type: 'string',
-          example: 'رمز عبور با موفقیت تغییر کرد',
-        },
+        message: { type: 'string', example: 'رمز عبور با موفقیت تغییر کرد' },
       },
     },
   })
-  @ApiResponse({
-    status: 400,
-    description: 'توکن نامعتبر یا منقضی شده است',
-  })
+  @ApiResponse({ status: 400, description: 'توکن نامعتبر یا منقضی شده است' })
   async resetPassword(@Body() resetPasswordDto: ResetPasswordDto) {
     return this.authService.resetPassword(resetPasswordDto);
   }
 
   @Public()
-  @Post('send-code')
-  @Throttle({ default: { limit: 3, ttl: 60000 } }) // 3 requests per minute for sending codes
+  @Post('send-otp')
+  @Throttle({ default: { limit: 3, ttl: 60000 } })
   @ApiOperation({
-    summary: 'ارسال کد تأیید OTP',
+    summary: 'ارسال کد تأیید OTP به موبایل (Mock)',
     description:
-      'ارسال کد ۶ رقمی به ایمیل برای ورود/ثبت‌نام یکپارچه. اگر کاربر وجود نداشته باشد، به صورت خودکار ایجاد می‌شود.',
+      'ارسال کد Mock به شماره موبایل برای ورود/ثبت‌نام. در محیط تست، کد همیشه 12345 است و در لاگ سرور ثبت می‌شود.',
   })
   @ApiResponse({
     status: 200,
@@ -144,32 +126,23 @@ export class AuthController {
     schema: {
       type: 'object',
       properties: {
-        message: {
-          type: 'string',
-          example: 'کد تأیید به ایمیل شما ارسال شد',
-        },
+        message: { type: 'string', example: 'کد تأیید ارسال شد' },
       },
     },
   })
-  @ApiResponse({
-    status: 400,
-    description: 'ایمیل نامعتبر است',
-  })
-  @ApiResponse({
-    status: 429,
-    description: 'تعداد درخواست بیش از حد مجاز',
-  })
-  async sendCode(@Body() sendCodeDto: SendCodeDto) {
-    return this.authService.sendOtpCode(sendCodeDto);
+  @ApiResponse({ status: 400, description: 'شماره موبایل نامعتبر است' })
+  @ApiResponse({ status: 429, description: 'تعداد درخواست بیش از حد مجاز' })
+  async sendOtp(@Body() sendOtpDto: SendOtpDto) {
+    return this.authService.sendOtp(sendOtpDto);
   }
 
   @Public()
-  @Post('verify-code')
-  @Throttle({ default: { limit: 10, ttl: 60000 } }) // 10 requests per minute for verification
+  @Post('verify-otp')
+  @Throttle({ default: { limit: 10, ttl: 60000 } })
   @ApiOperation({
     summary: 'تأیید کد OTP و ورود',
     description:
-      'تأیید کد ۶ رقمی و دریافت توکن‌های دسترسی. در صورت موفقیت، کاربر و توکن‌ها برگردانده می‌شوند.',
+      'تأیید کد Mock (12345) و دریافت توکن‌های دسترسی. در صورت موفقیت، کاربر (یا ایجاد می‌شود) و توکن‌ها برگردانده می‌شوند.',
   })
   @ApiResponse({
     status: 200,
@@ -177,39 +150,17 @@ export class AuthController {
     schema: {
       type: 'object',
       properties: {
-        user: {
-          type: 'object',
-          description: 'اطلاعات کاربر',
-        },
-        accessToken: {
-          type: 'string',
-          description: 'JWT Access Token',
-        },
-        refreshToken: {
-          type: 'string',
-          description: 'JWT Refresh Token',
-        },
-        isNewUser: {
-          type: 'boolean',
-          description: '?آیا کاربر جدید است یا خیر',
-          example: false,
-        },
+        user: { type: 'object', description: 'اطلاعات کاربر' },
+        accessToken: { type: 'string', description: 'JWT Access Token' },
+        refreshToken: { type: 'string', description: 'JWT Refresh Token' },
+        isNewUser: { type: 'boolean', description: 'آیا کاربر جدید است یا خیر', example: false },
       },
     },
   })
-  @ApiResponse({
-    status: 400,
-    description: 'کد تأیید نامعتبر یا منقضی شده است',
-  })
-  @ApiResponse({
-    status: 401,
-    description: 'حساب کاربری غیرفعال است',
-  })
-  @ApiResponse({
-    status: 429,
-    description: 'تعداد درخواست بیش از حد مجاز',
-  })
-  async verifyCode(@Body() verifyCodeDto: VerifyCodeDto) {
-    return this.authService.verifyOtpCode(verifyCodeDto);
+  @ApiResponse({ status: 400, description: 'کد تأیید نامعتبر است' })
+  @ApiResponse({ status: 401, description: 'حساب کاربری غیرفعال است' })
+  @ApiResponse({ status: 429, description: 'تعداد درخواست بیش از حد مجاز' })
+  async verifyOtp(@Body() verifyOtpDto: VerifyOtpDto) {
+    return this.authService.verifyOtp(verifyOtpDto);
   }
 }

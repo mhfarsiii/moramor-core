@@ -15,10 +15,10 @@ export class UpdateUserDto {
 
   @ApiProperty({
     example: '09123456789',
-    description: 'شماره تلفن',
+    description: 'شماره موبایل',
     required: false,
   })
   @IsOptional()
   @IsString()
-  phone?: string;
+  phoneNumber?: string;
 }

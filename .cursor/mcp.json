@@ -1,0 +1,13 @@
+{
+  "mcpServers": {
+    "moramor-terminal": {
+      "type": "stdio",
+      "command": "node",
+      "args": ["${workspaceFolder}/tools/mcp-terminal-server.js"],
+      "env": {
+        "MCP_WORKSPACE_ROOT": "${workspaceFolder}",
+        "MCP_TERMINAL_SHELL": "/bin/zsh"
+      }
+    }
+  }
+}
