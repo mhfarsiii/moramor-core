@@ -14,7 +14,7 @@ datasource db {
 
 model User {
   id            String   @id @default(cuid())
-  phoneNumber   String   @unique
+  phoneNumber   String?   @unique
   email         String?  @unique
   password      String? // Nullable for OTP-only users; required for admin accounts
   name          String
@@ -73,7 +73,7 @@ model PasswordResetToken {
 
 model OtpCode {
   id          String   @id @default(cuid())
-  phoneNumber String
+  phoneNumber String?
   code        String
   userId      String?
   user        User?    @relation(fields: [userId], references: [id], onDelete: Cascade)
